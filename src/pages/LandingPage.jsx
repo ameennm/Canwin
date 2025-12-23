@@ -8,7 +8,9 @@ import ThemeToggle from '../components/ThemeToggle';
 export default function LandingPage({ showToast }) {
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [mode, setMode] = useState('login'); // 'login' or 'signup'
     const navigate = useNavigate();
@@ -89,6 +91,11 @@ export default function LandingPage({ showToast }) {
 
         if (!password || password.length < 6) {
             showToast('Password must be at least 6 characters', 'error');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showToast('Passwords do not match', 'error');
             return;
         }
 
@@ -179,8 +186,8 @@ export default function LandingPage({ showToast }) {
                         type="button"
                         onClick={() => setMode('login')}
                         className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${mode === 'login'
-                                ? 'bg-gradient-to-r from-teal-500 to-purple-500 text-white'
-                                : ''
+                            ? 'bg-gradient-to-r from-teal-500 to-purple-500 text-white'
+                            : ''
                             }`}
                         style={mode !== 'login' ? { color: 'var(--text-secondary)' } : {}}
                     >
@@ -191,8 +198,8 @@ export default function LandingPage({ showToast }) {
                         type="button"
                         onClick={() => setMode('signup')}
                         className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${mode === 'signup'
-                                ? 'bg-gradient-to-r from-teal-500 to-purple-500 text-white'
-                                : ''
+                            ? 'bg-gradient-to-r from-teal-500 to-purple-500 text-white'
+                            : ''
                             }`}
                         style={mode !== 'signup' ? { color: 'var(--text-secondary)' } : {}}
                     >
@@ -241,6 +248,29 @@ export default function LandingPage({ showToast }) {
                             {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                     </div>
+
+                    {/* Confirm Password - Only show in signup mode */}
+                    {mode === 'signup' && (
+                        <div className="relative mb-4">
+                            <Lock className="input-icon" />
+                            <input
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="Confirm password"
+                                className="input-field input-with-icon"
+                                style={{ paddingRight: '48px' }}
+                                disabled={loading}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="password-toggle"
+                            >
+                                {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                        </div>
+                    )}
 
                     <button
                         type="submit"
