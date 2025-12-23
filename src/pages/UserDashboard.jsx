@@ -156,6 +156,23 @@ export default function UserDashboard({ showToast }) {
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
 
         try {
+            // Delete old avatar if it exists
+            if (user.avatar_url) {
+                try {
+                    // Extract filename from the URL
+                    const urlParts = user.avatar_url.split('/');
+                    const oldFileName = urlParts[urlParts.length - 1];
+                    if (oldFileName && oldFileName.includes(user.id)) {
+                        await supabase.storage
+                            .from('avatars')
+                            .remove([oldFileName]);
+                    }
+                } catch (deleteErr) {
+                    // Continue even if delete fails - the new upload is more important
+                    console.log('Old avatar delete failed:', deleteErr);
+                }
+            }
+
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
                 .upload(fileName, newAvatar);
