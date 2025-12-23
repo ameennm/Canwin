@@ -286,7 +286,6 @@ export default function RegistrationPage({ showToast }) {
                             <input
                                 type="file"
                                 accept="image/*"
-                                capture="user"
                                 onChange={handleAvatarChange}
                                 className="hidden"
                             />
