@@ -401,7 +401,7 @@ export default function UserDashboard({ showToast }) {
                                     <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
                                         <Camera className="w-6 h-6 text-white" />
                                     </div>
-                                    <input type="file" accept="image/*" capture="user" onChange={handleAvatarChange} className="hidden" />
+                                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
                                 </label>
                             ) : (
                                 <div
