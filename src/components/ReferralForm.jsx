@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, Send, BookOpen } from 'lucide-react';
-import { supabase, POINTS } from '../lib/supabase';
+import { UserPlus, BookOpen, Phone, CreditCard, User } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import Spinner from './Spinner';
 
 export default function ReferralForm({ userId, onSuccess }) {
+    const [courses, setCourses] = useState([]);
     const [form, setForm] = useState({
         studentName: '',
         studentContact: '',
         studentAadhar: '',
-        courseId: ''
+        courseId: '',
     });
-    const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingCourses, setLoadingCourses] = useState(true);
-    const [error, setError] = useState('');
 
     useEffect(() => {
         fetchCourses();
@@ -28,36 +27,40 @@ export default function ReferralForm({ userId, onSuccess }) {
                 .order('name');
             setCourses(data || []);
         } catch (err) {
-            console.error('Error:', err);
+            console.error('Error fetching courses:', err);
         } finally {
             setLoadingCourses(false);
         }
     };
 
     const formatAadhar = (value) => {
-        const digits = value.replace(/\D/g, '').slice(0, 12);
+        const digits = value.replace(/\D/g, '');
+        const limited = digits.slice(0, 12);
         const parts = [];
-        for (let i = 0; i < digits.length; i += 4) {
-            parts.push(digits.slice(i, i + 4));
+        for (let i = 0; i < limited.length; i += 4) {
+            parts.push(limited.slice(i, i + 4));
         }
         return parts.join(' ');
     };
 
+    const handleAadharChange = (e) => {
+        const formatted = formatAadhar(e.target.value);
+        setForm({ ...form, studentAadhar: formatted });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
 
         const cleanAadhar = form.studentAadhar.replace(/\s/g, '');
-
         if (!form.studentName.trim() || !form.studentContact.trim() || cleanAadhar.length !== 12 || !form.courseId) {
-            setError('Please fill all fields correctly');
+            onSuccess && onSuccess('Please fill all fields correctly');
             return;
         }
 
         setLoading(true);
 
         try {
-            const { error: insertError } = await supabase
+            const { error } = await supabase
                 .from('referrals')
                 .insert({
                     referrer_id: userId,
@@ -68,13 +71,13 @@ export default function ReferralForm({ userId, onSuccess }) {
                     status: 'pending',
                 });
 
-            if (insertError) throw insertError;
+            if (error) throw error;
 
             setForm({ studentName: '', studentContact: '', studentAadhar: '', courseId: '' });
-            onSuccess?.('Referral submitted!');
+            onSuccess && onSuccess('Referral submitted successfully!');
         } catch (err) {
-            console.error('Error:', err);
-            setError('Failed to submit. Try again.');
+            console.error('Error submitting referral:', err);
+            onSuccess && onSuccess('Failed to submit referral');
         } finally {
             setLoading(false);
         }
@@ -84,75 +87,126 @@ export default function ReferralForm({ userId, onSuccess }) {
 
     return (
         <div className="card">
-            <div className="flex items-center gap-2 mb-4">
+            <h3 className="font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                 <UserPlus className="w-5 h-5 text-teal-400" />
-                <h3 className="font-semibold text-white">Refer a Student</h3>
-            </div>
+                Add New Referral
+            </h3>
 
-            <form onSubmit={handleSubmit} className="space-y-3">
-                {/* Course */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Student Name */}
                 <div>
-                    <label className="block text-xs text-slate-400 mb-1">Course</label>
-                    {loadingCourses ? (
-                        <div className="flex justify-center py-3"><Spinner size="sm" /></div>
-                    ) : (
-                        <select
-                            value={form.courseId}
-                            onChange={(e) => setForm({ ...form, courseId: e.target.value })}
-                            className="input-field text-sm"
+                    <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                        Student Name
+                    </label>
+                    <div className="relative">
+                        <User className="input-icon" />
+                        <input
+                            type="text"
+                            value={form.studentName}
+                            onChange={(e) => setForm({ ...form, studentName: e.target.value })}
+                            placeholder="Enter student name"
+                            className="input-field input-with-icon"
                             disabled={loading}
-                        >
-                            <option value="">Select course...</option>
-                            {courses.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name} ({c.course_type === 'paid' ? '+10' : '+2'} pts)
-                                </option>
-                            ))}
-                        </select>
+                        />
+                    </div>
+                </div>
+
+                {/* Student Contact */}
+                <div>
+                    <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                        Student Mobile
+                    </label>
+                    <div className="relative">
+                        <Phone className="input-icon" />
+                        <input
+                            type="tel"
+                            value={form.studentContact}
+                            onChange={(e) => setForm({ ...form, studentContact: e.target.value })}
+                            placeholder="+91 9876543210"
+                            className="input-field input-with-icon"
+                            disabled={loading}
+                            inputMode="tel"
+                        />
+                    </div>
+                </div>
+
+                {/* Student Aadhar */}
+                <div>
+                    <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                        Student Aadhar
+                    </label>
+                    <div className="relative">
+                        <CreditCard className="input-icon" />
+                        <input
+                            type="text"
+                            value={form.studentAadhar}
+                            onChange={handleAadharChange}
+                            placeholder="XXXX XXXX XXXX"
+                            className="input-field input-with-icon font-mono"
+                            disabled={loading}
+                            maxLength={14}
+                            inputMode="numeric"
+                        />
+                    </div>
+                </div>
+
+                {/* Course Selection */}
+                <div>
+                    <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                        Select Course
+                    </label>
+                    {loadingCourses ? (
+                        <div className="flex items-center justify-center py-3">
+                            <Spinner size="sm" />
+                        </div>
+                    ) : (
+                        <div className="relative">
+                            <BookOpen className="input-icon" />
+                            <select
+                                value={form.courseId}
+                                onChange={(e) => setForm({ ...form, courseId: e.target.value })}
+                                className="input-field input-with-icon"
+                                disabled={loading}
+                            >
+                                <option value="">Choose a course</option>
+                                {courses.map((course) => (
+                                    <option key={course.id} value={course.id}>
+                                        {course.name} ({course.course_type === 'paid' ? `₹${course.price}` : 'Free'}) +{course.points}pts
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     )}
                 </div>
 
-                <div>
-                    <label className="block text-xs text-slate-400 mb-1">Student Name</label>
-                    <input
-                        type="text"
-                        value={form.studentName}
-                        onChange={(e) => setForm({ ...form, studentName: e.target.value })}
-                        placeholder="Full name"
-                        className="input-field text-sm"
-                        disabled={loading}
-                    />
-                </div>
+                {/* Points Preview */}
+                {selectedCourse && (
+                    <div
+                        className="flex items-center justify-between p-3 rounded-lg"
+                        style={{ background: selectedCourse.course_type === 'paid' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(34, 197, 94, 0.1)' }}
+                    >
+                        <span style={{ color: 'var(--text-secondary)' }}>Points you'll earn:</span>
+                        <span
+                            className="font-bold"
+                            style={{ color: selectedCourse.course_type === 'paid' ? '#f59e0b' : '#22c55e' }}
+                        >
+                            +{selectedCourse.points} pts
+                        </span>
+                    </div>
+                )}
 
-                <div>
-                    <label className="block text-xs text-slate-400 mb-1">Contact</label>
-                    <input
-                        type="tel"
-                        value={form.studentContact}
-                        onChange={(e) => setForm({ ...form, studentContact: e.target.value })}
-                        placeholder="WhatsApp number"
-                        className="input-field text-sm"
-                        disabled={loading}
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-xs text-slate-400 mb-1">Aadhar</label>
-                    <input
-                        type="text"
-                        value={form.studentAadhar}
-                        onChange={(e) => setForm({ ...form, studentAadhar: formatAadhar(e.target.value) })}
-                        placeholder="XXXX XXXX XXXX"
-                        className="input-field text-sm font-mono"
-                        disabled={loading}
-                        maxLength={14}
-                    />
-                </div>
-
-                {error && <p className="text-red-400 text-xs">{error}</p>}
-
-                <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2 text-sm py-3">
-                    {loading ? <Spinner size="sm" /> : <><Send className="w-4 h-4" /> Submit</>}
+                {/* Submit */}
+                <button
+                    type="submit"
+                    disabled={loading || loadingCourses}
+                    className="btn-gold w-full flex items-center justify-center gap-2"
+                >
+                    {loading ? <Spinner size="sm" /> : (
+                        <>
+                            <UserPlus className="w-5 h-5" />
+                            Submit Referral
+                        </>
+                    )}
                 </button>
             </form>
         </div>

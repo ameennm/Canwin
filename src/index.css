@@ -1,14 +1,48 @@
 @import "tailwindcss";
 
-:root {
+/* ============================================
+   THEME VARIABLES - DARK MODE (Default)
+   ============================================ */
+:root,
+[data-theme="dark"] {
   --primary: #0d9488;
   --primary-light: #14b8a6;
   --secondary: #7c3aed;
   --accent: #f59e0b;
   --success: #22c55e;
   --danger: #ef4444;
-  --dark: #1e293b;
-  --darker: #0f172a;
+
+  /* Dark theme colors */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-card: #1e293b;
+  --bg-input: #0f172a;
+  --border-color: #334155;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --glass-bg: rgba(15, 23, 42, 0.9);
+  --overlay-bg: rgba(0, 0, 0, 0.7);
+  --hover-bg: rgba(255, 255, 255, 0.1);
+  --hover-bg-strong: rgba(255, 255, 255, 0.15);
+}
+
+/* ============================================
+   LIGHT MODE THEME
+   ============================================ */
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-input: #f1f5f9;
+  --border-color: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --hover-bg: rgba(0, 0, 0, 0.05);
+  --hover-bg-strong: rgba(0, 0, 0, 0.1);
 }
 
 * {
@@ -19,19 +53,37 @@
 
 html {
   font-size: 16px;
+  min-height: 100%;
 }
 
 body {
   font-family: 'Outfit', system-ui, -apple-system, sans-serif;
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  color: #f8fafc;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   min-height: 100vh;
   min-height: 100dvh;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-/* Simple button styles */
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+[data-theme="dark"] body {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+}
+
+/* ============================================
+   BUTTON STYLES
+   ============================================ */
 .btn-primary {
   background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: white;
@@ -55,19 +107,19 @@ body {
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: var(--hover-bg);
+  color: var(--text-primary);
   padding: 12px 20px;
   border-radius: 10px;
   font-weight: 600;
   font-size: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--border-color);
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--hover-bg-strong);
 }
 
 .btn-success {
@@ -103,39 +155,73 @@ body {
   cursor: pointer;
 }
 
-/* Input styles */
+/* ============================================
+   INPUT STYLES - Fixed spacing for icons
+   ============================================ */
 .input-field {
   width: 100%;
   padding: 14px 16px;
-  background: #0f172a;
-  border: 1px solid #334155;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
-  color: white;
+  color: var(--text-primary);
   font-size: 16px;
   font-family: inherit;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.3s;
   -webkit-appearance: none;
   appearance: none;
 }
 
+/* Input with icon on left - proper spacing */
+.input-with-icon {
+  padding-left: 48px !important;
+}
+
+/* Input with icon on right */
+.input-with-icon-right {
+  padding-right: 48px !important;
+}
+
 .input-field:focus {
   outline: none;
-  border-color: #14b8a6;
+  border-color: var(--primary-light);
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
 }
 
 .input-field::placeholder {
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .input-field:disabled {
-  background: #1e293b;
-  color: #64748b;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 
+/* Icon positioning in input fields */
+.input-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.input-icon-right {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+}
+
 select.input-field {
-  background-color: #0f172a;
+  background-color: var(--bg-input);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
@@ -145,8 +231,8 @@ select.input-field {
 }
 
 select.input-field option {
-  background: #1e293b;
-  color: white;
+  background: var(--bg-card);
+  color: var(--text-primary);
   padding: 12px;
 }
 
@@ -155,15 +241,54 @@ textarea.input-field {
   min-height: 80px;
 }
 
-/* Card styles - Simple and clean */
+/* ============================================
+   CARD STYLES
+   ============================================ */
 .card {
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 16px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Level badges - Simple */
+[data-theme="light"] .card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   LAYOUT & CONTAINER CLASSES
+   ============================================ */
+.min-h-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+}
+
+.max-w-md {
+  max-width: 28rem;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.max-w-xl {
+  max-width: 36rem;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.max-w-6xl {
+  max-width: 72rem;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ============================================
+   LEVEL BADGES - Updated for new levels
+   ============================================ */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -174,28 +299,23 @@ textarea.input-field {
   font-weight: 600;
 }
 
-.badge-initiator {
-  background: #64748b;
+.badge-bronze {
+  background: #cd7f32;
   color: white;
 }
 
-.badge-advocate {
-  background: #3b82f6;
+.badge-silver {
+  background: #94a3b8;
   color: white;
 }
 
-.badge-guardian {
-  background: #22c55e;
+.badge-gold {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
   color: white;
 }
 
-.badge-mentor {
-  background: #8b5cf6;
-  color: white;
-}
-
-.badge-luminary {
-  background: #f59e0b;
+.badge-diamond {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
   color: white;
 }
 
@@ -209,11 +329,39 @@ textarea.input-field {
   color: white;
 }
 
-/* Progress bar */
+/* Keep old badge names for backwards compatibility */
+.badge-initiator {
+  background: #cd7f32;
+  color: white;
+}
+
+.badge-advocate {
+  background: #94a3b8;
+  color: white;
+}
+
+.badge-guardian {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
+.badge-mentor {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  color: white;
+}
+
+.badge-luminary {
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  color: white;
+}
+
+/* ============================================
+   PROGRESS BAR
+   ============================================ */
 .progress-container {
   width: 100%;
   height: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover-bg);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -225,16 +373,25 @@ textarea.input-field {
   transition: width 0.4s ease;
 }
 
-/* ID Card */
+/* ============================================
+   ID CARD
+   ============================================ */
 .id-card {
-  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-card);
+  border: 2px solid var(--border-color);
   border-radius: 16px;
   padding: 20px;
   position: relative;
 }
 
-/* Avatar upload */
+[data-theme="dark"] .id-card {
+  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   AVATAR UPLOAD
+   ============================================ */
 .avatar-upload {
   position: relative;
   width: 100px;
@@ -266,7 +423,9 @@ textarea.input-field {
   opacity: 1;
 }
 
-/* Tabs - Simple horizontal scroll */
+/* ============================================
+   TABS
+   ============================================ */
 .tabs-container {
   display: flex;
   gap: 4px;
@@ -283,7 +442,7 @@ textarea.input-field {
   padding: 10px 16px;
   font-weight: 600;
   font-size: 14px;
-  color: #64748b;
+  color: var(--text-muted);
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -293,15 +452,21 @@ textarea.input-field {
 }
 
 .tab-button.active {
-  color: white;
+  color: var(--text-primary);
   background: rgba(13, 148, 136, 0.2);
 }
 
-/* Simple spinner */
+[data-theme="light"] .tab-button.active {
+  background: rgba(13, 148, 136, 0.15);
+}
+
+/* ============================================
+   SPINNER
+   ============================================ */
 .spinner {
   width: 24px;
   height: 24px;
-  border: 3px solid rgba(255, 255, 255, 0.2);
+  border: 3px solid var(--hover-bg);
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -313,7 +478,9 @@ textarea.input-field {
   }
 }
 
-/* Toast */
+/* ============================================
+   TOAST
+   ============================================ */
 .toast {
   position: fixed;
   bottom: 20px;
@@ -324,6 +491,7 @@ textarea.input-field {
   font-weight: 500;
   z-index: 1000;
   animation: slideUp 0.3s ease;
+  color: white;
 }
 
 .toast-success {
@@ -346,7 +514,9 @@ textarea.input-field {
   }
 }
 
-/* Simple animations */
+/* ============================================
+   ANIMATIONS
+   ============================================ */
 .fade-in {
   animation: fadeIn 0.4s ease;
 }
@@ -363,14 +533,16 @@ textarea.input-field {
   }
 }
 
-/* Background decoration - subtle */
+/* ============================================
+   BACKGROUND DECORATIONS
+   ============================================ */
 .bg-decoration {
   position: fixed;
   pointer-events: none;
   z-index: -1;
 }
 
-.bg-blob-1 {
+[data-theme="dark"] .bg-blob-1 {
   top: -100px;
   right: -50px;
   width: 300px;
@@ -379,7 +551,7 @@ textarea.input-field {
   border-radius: 50%;
 }
 
-.bg-blob-2 {
+[data-theme="dark"] .bg-blob-2 {
   bottom: -150px;
   left: -100px;
   width: 400px;
@@ -388,11 +560,18 @@ textarea.input-field {
   border-radius: 50%;
 }
 
-/* Modal */
+[data-theme="light"] .bg-blob-1,
+[data-theme="light"] .bg-blob-2 {
+  display: none;
+}
+
+/* ============================================
+   MODAL
+   ============================================ */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -401,8 +580,8 @@ textarea.input-field {
 }
 
 .modal-content {
-  background: var(--dark);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 20px;
   padding: 20px;
   width: 100%;
@@ -411,7 +590,9 @@ textarea.input-field {
   overflow-y: auto;
 }
 
-/* Simple responsive grid */
+/* ============================================
+   GRIDS
+   ============================================ */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -441,7 +622,9 @@ textarea.input-field {
   }
 }
 
-/* Points display */
+/* ============================================
+   POINTS DISPLAY
+   ============================================ */
 .points-display {
   background: rgba(13, 148, 136, 0.2);
   border: 1px solid rgba(13, 148, 136, 0.3);
@@ -452,7 +635,9 @@ textarea.input-field {
   gap: 6px;
 }
 
-/* Table for desktop */
+/* ============================================
+   DATA TABLE
+   ============================================ */
 .table-container {
   overflow-x: auto;
 }
@@ -460,24 +645,33 @@ textarea.input-field {
 .data-table {
   width: 100%;
   min-width: 500px;
+  border-collapse: collapse;
 }
 
 .data-table th {
   padding: 12px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.05);
-  color: #64748b;
+  background: var(--hover-bg);
+  color: var(--text-muted);
   font-size: 12px;
   text-transform: uppercase;
+  font-weight: 600;
 }
 
 .data-table td {
   padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border-color);
   font-size: 14px;
+  color: var(--text-primary);
 }
 
-/* Bar chart */
+.data-table tr:hover td {
+  background: var(--hover-bg);
+}
+
+/* ============================================
+   CHART
+   ============================================ */
 .chart-container {
   height: 180px;
 }
@@ -508,11 +702,13 @@ textarea.input-field {
 
 .bar-label {
   font-size: 11px;
-  color: #64748b;
+  color: var(--text-muted);
   margin-top: 8px;
 }
 
-/* Birthday card */
+/* ============================================
+   BIRTHDAY CARD
+   ============================================ */
 .birthday-card {
   background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #f59e0b 100%);
   border-radius: 16px;
@@ -520,14 +716,18 @@ textarea.input-field {
   text-align: center;
 }
 
-/* Glass header */
+/* ============================================
+   GLASS HEADER
+   ============================================ */
 .glass-dark {
-  background: rgba(15, 23, 42, 0.9);
+  background: var(--glass-bg);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border-color);
 }
 
-/* Safe area for mobile */
+/* ============================================
+   SAFE AREA (Mobile)
+   ============================================ */
 .safe-area-top {
   padding-top: env(safe-area-inset-top);
 }
@@ -536,24 +736,160 @@ textarea.input-field {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Utility classes */
+/* ============================================
+   UTILITIES
+   ============================================ */
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Checkbox */
 input[type="checkbox"] {
   width: 18px;
   height: 18px;
   accent-color: var(--primary);
 }
 
-/* Line clamp */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* ============================================
+   THEME TOGGLE BUTTON
+   ============================================ */
+.theme-toggle-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--hover-bg);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.2s;
+  color: var(--text-secondary);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--hover-bg-strong);
+}
+
+.theme-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+/* ============================================
+   SEARCH INPUT - Admin specific
+   ============================================ */
+.search-input-container {
+  position: relative;
+}
+
+.search-input-container .input-field {
+  padding-left: 48px;
+  padding-right: 40px;
+}
+
+/* ============================================
+   TEXT COLORS FOR BOTH THEMES
+   ============================================ */
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* ============================================
+   STUDENT DETAIL MODAL
+   ============================================ */
+.student-detail-modal {
+  max-width: 600px;
+}
+
+.student-detail-modal .course-item {
+  padding: 12px;
+  background: var(--hover-bg);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.student-detail-modal .course-item:last-child {
+  margin-bottom: 0;
+}
+
+/* ============================================
+   PASSWORD TOGGLE
+   ============================================ */
+.password-toggle {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px;
+}
+
+.password-toggle:hover {
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   DATE INPUT STYLES
+   ============================================ */
+.date-input {
+  cursor: pointer;
+  padding-right: 48px !important;
+}
+
+/* Style the native calendar icon */
+.date-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  opacity: 0;
+  width: 24px;
+  height: 24px;
+}
+
+/* For Firefox */
+.date-input::-moz-calendar-picker-indicator {
+  opacity: 0;
+}
+
+/* Ensure date input text is visible */
+.date-input::-webkit-datetime-edit {
+  color: var(--text-primary);
+}
+
+.date-input::-webkit-datetime-edit-fields-wrapper {
+  color: var(--text-primary);
+}
+
+.date-input::-webkit-datetime-edit-text,
+.date-input::-webkit-datetime-edit-month-field,
+.date-input::-webkit-datetime-edit-day-field,
+.date-input::-webkit-datetime-edit-year-field {
+  color: var(--text-primary);
+}
+
+/* Placeholder for empty date */
+.date-input:not(:focus):invalid::-webkit-datetime-edit {
+  color: var(--text-muted);
 }

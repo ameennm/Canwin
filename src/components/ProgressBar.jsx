@@ -1,23 +1,31 @@
-import { getLevelProgress, LEVELS } from '../lib/supabase';
-import { Zap } from 'lucide-react';
+import { getLevelProgress } from '../lib/supabase';
 
 export default function ProgressBar({ totalPoints, currentLevel }) {
-    const { progress, nextLevel, remaining } = getLevelProgress(totalPoints);
+    const { progress, nextLevel, remaining, nextThreshold } = getLevelProgress(totalPoints);
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-2 text-xs">
-                <span className="text-slate-400">
-                    {totalPoints % 100}/100 in level
-                </span>
-                <span className="text-teal-400">
-                    {nextLevel ? `${remaining} to ${nextLevel}` : '🏆 Max!'}
-                </span>
-            </div>
-
             <div className="progress-container">
-                <div className="progress-bar" style={{ width: `${progress}%` }} />
+                <div
+                    className="progress-bar"
+                    style={{ width: `${progress}%` }}
+                />
             </div>
+            {nextLevel && (
+                <div className="flex justify-between text-xs mt-2">
+                    <span style={{ color: 'var(--text-muted)' }}>
+                        {remaining} pts to {nextLevel}
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                        {totalPoints} / {nextThreshold}
+                    </span>
+                </div>
+            )}
+            {!nextLevel && (
+                <p className="text-xs text-center mt-2 text-teal-400">
+                    🎉 Maximum level reached!
+                </p>
+            )}
         </div>
     );
 }

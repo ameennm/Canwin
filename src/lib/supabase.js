@@ -22,13 +22,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     },
 });
 
-// Level configuration with point thresholds
+// Updated Level configuration with new thresholds
+// Bronze: 0-99 points
+// Silver: 100-249 points
+// Gold: 250-499 points
+// Diamond: 500-999 points
 export const LEVELS = {
-    Initiator: { min: 0, max: 99, order: 1 },
-    Advocate: { min: 100, max: 199, order: 2 },
-    Guardian: { min: 200, max: 299, order: 3 },
-    Mentor: { min: 300, max: 399, order: 4 },
-    Luminary: { min: 400, max: Infinity, order: 5 },
+    Bronze: { min: 0, max: 99, order: 1 },
+    Silver: { min: 100, max: 249, order: 2 },
+    Gold: { min: 250, max: 499, order: 3 },
+    Diamond: { min: 500, max: 999, order: 4 },
 };
 
 // Points per referral type
@@ -45,11 +48,10 @@ export const POINTS = {
 export function getLevel(totalPoints) {
     const points = totalPoints || 0;
 
-    if (points >= 400) return 'Luminary';
-    if (points >= 300) return 'Mentor';
-    if (points >= 200) return 'Guardian';
-    if (points >= 100) return 'Advocate';
-    return 'Initiator';
+    if (points >= 500) return 'Diamond';
+    if (points >= 250) return 'Gold';
+    if (points >= 100) return 'Silver';
+    return 'Bronze';
 }
 
 /**
@@ -62,9 +64,15 @@ export function getLevelProgress(totalPoints) {
     const currentLevel = getLevel(points);
     const levelConfig = LEVELS[currentLevel];
 
-    // Points within current level (0-99 range)
-    const pointsInLevel = points % 100;
-    const progress = Math.min(pointsInLevel, 100);
+    // Get next level threshold
+    const thresholds = { Bronze: 100, Silver: 250, Gold: 500, Diamond: 1000 };
+    const currentThreshold = levelConfig.min;
+    const nextThreshold = thresholds[currentLevel];
+
+    // Points within current level
+    const pointsInLevel = points - currentThreshold;
+    const levelRange = nextThreshold - currentThreshold;
+    const progress = Math.min((pointsInLevel / levelRange) * 100, 100);
 
     // Determine next level
     const levelNames = Object.keys(LEVELS);
@@ -74,7 +82,7 @@ export function getLevelProgress(totalPoints) {
         : null;
 
     // Points remaining to next level
-    const remaining = nextLevel ? 100 - pointsInLevel : 0;
+    const remaining = nextLevel ? nextThreshold - points : 0;
 
     return {
         progress,
@@ -82,6 +90,7 @@ export function getLevelProgress(totalPoints) {
         nextLevel,
         remaining,
         pointsInLevel,
+        nextThreshold,
     };
 }
 
@@ -116,6 +125,15 @@ export function validateAadhar(aadhar) {
 }
 
 /**
+ * Validate email format
+ * @param {string} email - Email address
+ * @returns {boolean} Whether valid
+ */
+export function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || '');
+}
+
+/**
  * Validate phone number format
  * @param {string} phone - Phone number
  * @returns {boolean} Whether valid
@@ -138,4 +156,19 @@ export function sanitizeInput(input) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#x27;')
         .trim();
+}
+
+/**
+ * Format date for display
+ * @param {string} dateString - Date string
+ * @returns {string} Formatted date
+ */
+export function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
 }

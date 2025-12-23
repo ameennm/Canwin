@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, ArrowLeft, Shield } from 'lucide-react';
+import { Lock, Mail, Shield, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Spinner from '../components/Spinner';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function AdminLogin({ showToast }) {
     const navigate = useNavigate();
     const [form, setForm] = useState({ email: '', password: '' });
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [checkingSession, setCheckingSession] = useState(true);
 
     useEffect(() => {
-        // Check if already logged in
         checkSession();
     }, []);
 
@@ -66,6 +67,11 @@ export default function AdminLogin({ showToast }) {
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
+            {/* Theme Toggle */}
+            <div className="fixed top-4 right-4 z-50">
+                <ThemeToggle />
+            </div>
+
             <div className="max-w-md w-full">
                 <div className="card fade-in">
                     {/* Header */}
@@ -73,43 +79,51 @@ export default function AdminLogin({ showToast }) {
                         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-purple-500 flex items-center justify-center mx-auto mb-4">
                             <Shield className="w-8 h-8 text-white" />
                         </div>
-                        <h1 className="text-2xl font-bold text-white">Admin Login</h1>
-                        <p className="text-slate-400 mt-2">Access the management dashboard</p>
+                        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Admin Login</h1>
+                        <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>Access the management dashboard</p>
                     </div>
 
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                                 Email Address
                             </label>
                             <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <Mail className="input-icon" />
                                 <input
                                     type="email"
                                     value={form.email}
                                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                                     placeholder="admin@canwin.com"
-                                    className="input-field pl-12"
+                                    className="input-field input-with-icon"
                                     disabled={loading}
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                                 Password
                             </label>
                             <div className="relative">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <Lock className="input-icon" />
                                 <input
-                                    type="password"
+                                    type={showPassword ? 'text' : 'password'}
                                     value={form.password}
                                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                                     placeholder="••••••••"
-                                    className="input-field pl-12"
+                                    className="input-field input-with-icon"
+                                    style={{ paddingRight: '48px' }}
                                     disabled={loading}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="password-toggle"
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
                             </div>
                         </div>
 
@@ -129,7 +143,7 @@ export default function AdminLogin({ showToast }) {
                         </button>
                     </form>
 
-                    <p className="text-center text-slate-500 text-sm mt-6">
+                    <p className="text-center text-sm mt-6" style={{ color: 'var(--text-muted)' }}>
                         Only authorized administrators can access this area
                     </p>
                 </div>

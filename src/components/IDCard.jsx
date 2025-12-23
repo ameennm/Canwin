@@ -1,202 +1,122 @@
-import { useRef } from 'react';
-import { Download, User, Zap, Phone, CreditCard } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { User, Award, Gem, Shield, Crown, Phone, Calendar, CreditCard } from 'lucide-react';
 
 export default function IDCard({ user }) {
-    const cardRef = useRef(null);
-
-    const handleDownload = async () => {
-        if (!cardRef.current) return;
-
-        try {
-            const canvas = await html2canvas(cardRef.current, {
-                scale: 2,
-                backgroundColor: '#0f172a',
-                useCORS: true,
-                logging: false,
-            });
-
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: 'landscape',
-                unit: 'mm',
-                format: [100, 65],
-            });
-
-            pdf.addImage(imgData, 'PNG', 0, 0, 100, 65);
-            pdf.save(`CANWIN-${user.custom_id}.pdf`);
-        } catch (error) {
-            console.error('PDF Error:', error);
-            alert('Could not generate PDF. Please try again.');
-        }
+    const levelIcons = {
+        Bronze: Award,
+        Silver: Shield,
+        Gold: Crown,
+        Diamond: Gem,
+        // Backwards compatibility
+        Initiator: Award,
+        Advocate: Shield,
+        Guardian: Crown,
+        Mentor: Gem,
+        Luminary: Gem,
     };
 
-    function getLevelColor(level) {
-        const colors = {
-            Initiator: '#64748b',
-            Advocate: '#3b82f6',
-            Guardian: '#22c55e',
-            Mentor: '#8b5cf6',
-            Luminary: '#f59e0b',
-        };
-        return colors[level] || colors.Initiator;
-    }
+    const levelColors = {
+        Bronze: 'from-amber-600 to-amber-800',
+        Silver: 'from-slate-400 to-slate-600',
+        Gold: 'from-yellow-400 to-amber-500',
+        Diamond: 'from-blue-400 to-blue-600',
+        // Backwards compatibility
+        Initiator: 'from-amber-600 to-amber-800',
+        Advocate: 'from-slate-400 to-slate-600',
+        Guardian: 'from-yellow-400 to-amber-500',
+        Mentor: 'from-blue-400 to-blue-600',
+        Luminary: 'from-purple-400 to-purple-600',
+    };
 
-    function formatAadhar(aadhar) {
-        if (!aadhar) return 'XXXX XXXX XXXX';
-        const clean = aadhar.replace(/\D/g, '');
-        return `${clean.slice(0, 4)} ${clean.slice(4, 8)} ${clean.slice(8, 12)}`;
-    }
+    const LevelIcon = levelIcons[user.current_level] || Award;
+    const gradientClass = levelColors[user.current_level] || 'from-amber-600 to-amber-800';
+
+    const formatDOB = (dob) => {
+        if (!dob) return '';
+        const date = new Date(dob);
+        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
 
     return (
-        <div>
-            <div
-                ref={cardRef}
-                style={{
-                    background: 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)',
-                    border: '2px solid #334155',
-                    borderRadius: '16px',
-                    padding: '16px',
-                }}
-            >
-                {/* Header */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '6px',
-                            background: 'linear-gradient(135deg, #14b8a6 0%, #8b5cf6 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}>
-                            <span style={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>C</span>
+        <div className="id-card fade-in">
+            {/* Header gradient */}
+            <div className={`absolute top-0 left-0 right-0 h-16 bg-gradient-to-r ${gradientClass} rounded-t-[14px] opacity-20`} />
+
+            {/* Content */}
+            <div className="relative">
+                {/* Top Row */}
+                <div className="flex items-start justify-between mb-4">
+                    {/* Logo */}
+                    <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-purple-500 flex items-center justify-center">
+                            <span className="text-white font-bold">C</span>
                         </div>
-                        <span style={{ fontWeight: 'bold', color: 'white', fontSize: '14px' }}>CANWIN</span>
+                        <div>
+                            <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>CANWIN</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Member Card</p>
+                        </div>
                     </div>
-                    <span style={{
-                        background: getLevelColor(user.current_level),
-                        color: 'white',
-                        padding: '3px 8px',
-                        borderRadius: '12px',
-                        fontSize: '10px',
-                        fontWeight: '600',
-                    }}>
-                        {user.current_level}
-                    </span>
+
+                    {/* Level Badge */}
+                    <div className={`bg-gradient-to-r ${gradientClass} px-3 py-1 rounded-full flex items-center gap-1`}>
+                        <LevelIcon className="w-4 h-4 text-white" />
+                        <span className="text-white text-xs font-semibold">{user.current_level}</span>
+                    </div>
                 </div>
 
-                {/* User Info */}
-                <div style={{ display: 'flex', gap: '12px' }}>
+                {/* Avatar & Info */}
+                <div className="flex gap-4">
                     {/* Avatar */}
-                    <div style={{
-                        width: '60px',
-                        height: '60px',
-                        borderRadius: '10px',
-                        overflow: 'hidden',
-                        border: '2px solid #14b8a6',
-                        flexShrink: 0,
-                    }}>
+                    <div
+                        className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0"
+                        style={{ border: '3px solid var(--primary)' }}
+                    >
                         {user.avatar_url ? (
-                            <img
-                                src={user.avatar_url}
-                                alt=""
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                crossOrigin="anonymous"
-                            />
+                            <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : (
-                            <div style={{
-                                width: '100%',
-                                height: '100%',
-                                background: '#334155',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                <User style={{ width: '28px', height: '28px', color: '#64748b' }} />
+                            <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}>
+                                <User className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
                             </div>
                         )}
                     </div>
 
                     {/* Details */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <h4 style={{
-                            color: 'white',
-                            fontWeight: 'bold',
-                            fontSize: '14px',
-                            margin: '0 0 2px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                        }}>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-lg truncate" style={{ color: 'var(--text-primary)' }}>
                             {user.full_name}
-                        </h4>
-                        <p style={{
-                            color: '#14b8a6',
-                            fontFamily: 'monospace',
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            margin: '0 0 6px'
-                        }}>
-                            {user.custom_id}
+                        </h3>
+                        <p className="text-teal-400 font-mono font-bold text-sm mb-2">
+                            {user.custom_id || 'Pending'}
                         </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Zap style={{ width: '10px', height: '10px', color: '#f59e0b' }} />
-                            <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '600' }}>
-                                {user.total_points || 0} Points
-                            </span>
+
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-xs">
+                                <Phone className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                                <span style={{ color: 'var(--text-secondary)' }}>{user.whatsapp_number}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                                <Calendar className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                                <span style={{ color: 'var(--text-secondary)' }}>{formatDOB(user.dob)}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Contact Details */}
-                <div style={{
-                    marginTop: '10px',
-                    paddingTop: '10px',
-                    borderTop: '1px solid #334155',
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '8px',
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Phone style={{ width: '10px', height: '10px', color: '#64748b' }} />
-                        <span style={{ color: '#94a3b8', fontSize: '10px' }}>
-                            {user.whatsapp_number}
-                        </span>
+                {/* Bottom Stats */}
+                <div className="grid grid-cols-3 gap-2 mt-4 pt-4" style={{ borderTop: '1px solid var(--border-color)' }}>
+                    <div className="text-center">
+                        <p className="font-bold text-teal-400">{user.total_points || 0}</p>
+                        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Points</p>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <CreditCard style={{ width: '10px', height: '10px', color: '#64748b' }} />
-                        <span style={{ color: '#94a3b8', fontSize: '10px', fontFamily: 'monospace' }}>
-                            {formatAadhar(user.aadhar_number)}
-                        </span>
+                    <div className="text-center">
+                        <p className="font-bold text-amber-400">{user.paid_referrals || 0}</p>
+                        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Paid</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="font-bold text-green-400">{user.free_referrals || 0}</p>
+                        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Free</p>
                     </div>
                 </div>
             </div>
-
-            <button
-                onClick={handleDownload}
-                style={{
-                    width: '100%',
-                    marginTop: '12px',
-                    padding: '12px 20px',
-                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '10px',
-                    fontWeight: '600',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                }}
-            >
-                <Download style={{ width: '18px', height: '18px' }} />
-                Download ID Card
-            </button>
         </div>
     );
 }

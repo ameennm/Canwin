@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { useState } from 'react';
+import { ThemeProvider } from './context/ThemeContext';
 import LandingPage from './pages/LandingPage';
 import RegistrationPage from './pages/RegistrationPage';
 import UserDashboard from './pages/UserDashboard';
@@ -17,23 +18,25 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen relative">
-      {/* Background decorations */}
-      <div className="bg-decoration bg-blob-1" />
-      <div className="bg-decoration bg-blob-2" />
+    <ThemeProvider>
+      <div className="min-h-screen relative">
+        {/* Background decorations */}
+        <div className="bg-decoration bg-blob-1" />
+        <div className="bg-decoration bg-blob-2" />
 
-      {/* Toast notifications */}
-      {toast && <Toast message={toast.message} type={toast.type} />}
+        {/* Toast notifications */}
+        {toast && <Toast message={toast.message} type={toast.type} />}
 
-      <Routes>
-        <Route path="/" element={<LandingPage showToast={showToast} />} />
-        <Route path="/register" element={<RegistrationPage showToast={showToast} />} />
-        <Route path="/dashboard" element={<UserDashboard showToast={showToast} />} />
-        <Route path="/pending" element={<PendingPage showToast={showToast} />} />
-        <Route path="/adminlogin" element={<AdminLogin showToast={showToast} />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard showToast={showToast} />} />
-      </Routes>
-    </div>
+        <Routes>
+          <Route path="/" element={<LandingPage showToast={showToast} />} />
+          <Route path="/register" element={<RegistrationPage showToast={showToast} />} />
+          <Route path="/dashboard" element={<UserDashboard showToast={showToast} />} />
+          <Route path="/pending" element={<PendingPage showToast={showToast} />} />
+          <Route path="/adminlogin" element={<AdminLogin showToast={showToast} />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard showToast={showToast} />} />
+        </Routes>
+      </div>
+    </ThemeProvider>
   );
 }
 

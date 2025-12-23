@@ -1,15 +1,21 @@
-import { Star, Award, Shield, Crown, Sparkles } from 'lucide-react';
+import { Award, Shield, Crown, Gem } from 'lucide-react';
 
+// Updated level configuration for Bronze, Silver, Gold, Diamond
 const levelConfig = {
-    Initiator: { icon: Star, class: 'badge-initiator' },
-    Advocate: { icon: Award, class: 'badge-advocate' },
-    Guardian: { icon: Shield, class: 'badge-guardian' },
-    Mentor: { icon: Crown, class: 'badge-mentor' },
-    Luminary: { icon: Sparkles, class: 'badge-luminary' },
+    Bronze: { icon: Award, class: 'badge-bronze' },
+    Silver: { icon: Shield, class: 'badge-silver' },
+    Gold: { icon: Crown, class: 'badge-gold' },
+    Diamond: { icon: Gem, class: 'badge-diamond' },
+    // Keep old names for backwards compatibility
+    Initiator: { icon: Award, class: 'badge-bronze' },
+    Advocate: { icon: Shield, class: 'badge-silver' },
+    Guardian: { icon: Crown, class: 'badge-gold' },
+    Mentor: { icon: Gem, class: 'badge-diamond' },
+    Luminary: { icon: Gem, class: 'badge-diamond' },
 };
 
 export default function LevelBadge({ level, size = 'md' }) {
-    const config = levelConfig[level] || levelConfig.Initiator;
+    const config = levelConfig[level] || levelConfig.Bronze;
     const Icon = config.icon;
 
     const sizeClass = size === 'sm' ? 'text-xs py-1 px-2' : 'text-sm py-1.5 px-3';
