@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Users, RefreshCw, User, Zap, Gift, Award, X, Camera, Save } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { LogOut, Users, RefreshCw, User, Zap, Gift, Award, X, Camera, Save, UserPlus, Trophy, Medal, Crown, Gem, Star, Megaphone, ChevronDown } from 'lucide-react';
+import { supabase, getMonthName, canReferPromoters } from '../lib/supabase';
 import IDCard from '../components/IDCard';
 import BirthdayCard from '../components/BirthdayCard';
-import ReferralForm from '../components/ReferralForm';
 import ProgressBar from '../components/ProgressBar';
 import LevelBadge from '../components/LevelBadge';
 import Spinner from '../components/Spinner';
@@ -22,6 +21,16 @@ export default function UserDashboard({ showToast }) {
     const [newAvatar, setNewAvatar] = useState(null);
     const [avatarPreview, setAvatarPreview] = useState(null);
     const [saving, setSaving] = useState(false);
+
+    // Leaderboard state
+    const [leaderboard, setLeaderboard] = useState([]);
+    const [userRank, setUserRank] = useState(null);
+    const [showLeaderboard, setShowLeaderboard] = useState(true);
+
+    // Referred promoters state (promoters under this user)
+    const [myPromoters, setMyPromoters] = useState([]);
+    const [myPromotersBonus, setMyPromotersBonus] = useState(0);
+    const [showMyPromoters, setShowMyPromoters] = useState(true);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('canwin_user');
@@ -70,11 +79,96 @@ export default function UserDashboard({ showToast }) {
                 .limit(10);
 
             setReferrals(referralData || []);
+
+            // Fetch leaderboard
+            await fetchLeaderboard(userData.id);
+
+            // Fetch promoters under this user
+            await fetchMyPromoters(userData.id);
         } catch (err) {
             console.error('Error:', err);
             showToast('Error loading data', 'error');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchLeaderboard = async (currentUserId) => {
+        try {
+            const { data: topPromoters } = await supabase
+                .from('public_users')
+                .select('id, full_name, custom_id, avatar_url, total_points, current_level')
+                .eq('is_approved', true)
+                .order('total_points', { ascending: false })
+                .limit(10);
+
+            setLeaderboard(topPromoters || []);
+
+            // Find current user's rank
+            const { data: allRanks } = await supabase
+                .from('public_users')
+                .select('id, total_points')
+                .eq('is_approved', true)
+                .order('total_points', { ascending: false });
+
+            if (allRanks) {
+                const rank = allRanks.findIndex(p => p.id === currentUserId);
+                setUserRank(rank >= 0 ? rank + 1 : null);
+            }
+        } catch (err) {
+            console.error('Error fetching leaderboard:', err);
+        }
+    };
+
+    const fetchMyPromoters = async (currentUserId) => {
+        try {
+            // Get promoters referred by this user
+            const { data: referredPromoters } = await supabase
+                .from('public_users')
+                .select('id, full_name, custom_id, avatar_url, total_points, current_level, is_approved, created_at')
+                .eq('referred_by', currentUserId)
+                .order('total_points', { ascending: false });
+
+            if (referredPromoters && referredPromoters.length > 0) {
+                // For each referred promoter, get their approved referrals to calculate bonus
+                const promotersWithStats = await Promise.all(
+                    referredPromoters.map(async (promoter) => {
+                        // Get referrals where this promoter is the referrer and current user got bonus
+                        const { data: bonusReferrals } = await supabase
+                            .from('referrals')
+                            .select('second_level_points')
+                            .eq('referrer_id', promoter.id)
+                            .eq('second_level_referrer_id', currentUserId)
+                            .eq('status', 'approved');
+
+                        const bonusEarned = bonusReferrals?.reduce((sum, r) => sum + (r.second_level_points || 0), 0) || 0;
+
+                        // Get count of students referred by this promoter
+                        const { count: studentCount } = await supabase
+                            .from('referrals')
+                            .select('id', { count: 'exact', head: true })
+                            .eq('referrer_id', promoter.id)
+                            .eq('status', 'approved');
+
+                        return {
+                            ...promoter,
+                            bonusEarned,
+                            studentCount: studentCount || 0
+                        };
+                    })
+                );
+
+                setMyPromoters(promotersWithStats);
+
+                // Calculate total bonus earned from all referred promoters
+                const totalBonus = promotersWithStats.reduce((sum, p) => sum + p.bonusEarned, 0);
+                setMyPromotersBonus(totalBonus);
+            } else {
+                setMyPromoters([]);
+                setMyPromotersBonus(0);
+            }
+        } catch (err) {
+            console.error('Error fetching my promoters:', err);
         }
     };
 
@@ -87,13 +181,13 @@ export default function UserDashboard({ showToast }) {
             return;
         }
 
-        if (file.size > 300 * 1024) {
+        if (file.size > 100 * 1024) {
             try {
                 const compressedFile = await compressImage(file);
                 setNewAvatar(compressedFile);
                 setAvatarPreview(URL.createObjectURL(compressedFile));
             } catch (err) {
-                showToast('Image must be less than 300KB', 'error');
+                showToast('Image must be less than 100KB', 'error');
                 return;
             }
         } else {
@@ -127,7 +221,7 @@ export default function UserDashboard({ showToast }) {
 
                 canvas.toBlob(
                     (blob) => {
-                        if (blob && blob.size <= 300 * 1024) {
+                        if (blob && blob.size <= 100 * 1024) {
                             resolve(new File([blob], file.name, { type: 'image/jpeg' }));
                         } else {
                             canvas.toBlob(
@@ -159,7 +253,6 @@ export default function UserDashboard({ showToast }) {
             // Delete old avatar if it exists
             if (user.avatar_url) {
                 try {
-                    // Extract filename from the URL
                     const urlParts = user.avatar_url.split('/');
                     const oldFileName = urlParts[urlParts.length - 1];
                     if (oldFileName && oldFileName.includes(user.id)) {
@@ -168,7 +261,6 @@ export default function UserDashboard({ showToast }) {
                             .remove([oldFileName]);
                     }
                 } catch (deleteErr) {
-                    // Continue even if delete fails - the new upload is more important
                     console.log('Old avatar delete failed:', deleteErr);
                 }
             }
@@ -251,6 +343,13 @@ export default function UserDashboard({ showToast }) {
         });
     };
 
+    const getRankIcon = (rank) => {
+        if (rank === 1) return <Crown className="w-5 h-5 text-amber-400" />;
+        if (rank === 2) return <Medal className="w-5 h-5 text-slate-300" />;
+        if (rank === 3) return <Medal className="w-5 h-5 text-amber-600" />;
+        return <span className="w-5 h-5 flex items-center justify-center text-xs font-bold" style={{ color: 'var(--text-muted)' }}>{rank}</span>;
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -320,7 +419,7 @@ export default function UserDashboard({ showToast }) {
                         <div className="card text-center p-3">
                             <Users className="w-5 h-5 text-teal-400 mx-auto mb-1" />
                             <p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{totalReferrals}</p>
-                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Referrals</p>
+                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Students</p>
                         </div>
                         <div className="card text-center p-3">
                             <Gift className="w-5 h-5 text-green-400 mx-auto mb-1" />
@@ -346,13 +445,178 @@ export default function UserDashboard({ showToast }) {
                     {/* ID Card */}
                     <IDCard user={user} />
 
-                    {/* Referral Form */}
-                    <ReferralForm userId={user.id} onSuccess={(msg) => { showToast(msg); handleRefresh(); }} />
+                    {/* Add New Student Button */}
+                    <button
+                        onClick={() => navigate('/add-student')}
+                        className="btn-gold w-full flex items-center justify-center gap-3 py-4 text-lg"
+                    >
+                        <UserPlus className="w-6 h-6" />
+                        Add New Student
+                    </button>
+
+                    {/* Refer Promoters Section - Only for Silver+ users */}
+                    {canReferPromoters(user.current_level) && (
+                        <div className="card" style={{ background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(168, 85, 247, 0.05))' }}>
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(124, 58, 237, 0.2)' }}>
+                                    <Megaphone className="w-5 h-5 text-purple-400" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Refer New Promoters</h3>
+                                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Share your ID to earn bonus points</p>
+                                </div>
+                            </div>
+                            <div className="p-3 rounded-lg font-mono text-center text-lg" style={{ background: 'var(--hover-bg)', color: 'var(--primary-light)' }}>
+                                {user.custom_id}
+                            </div>
+                            <p className="text-xs mt-2 text-center" style={{ color: 'var(--text-muted)' }}>
+                                When new promoters sign up with your code, you earn bonus points each time they refer students!
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Leaderboard Section */}
+                    <div className="card">
+                        <div
+                            className="flex items-center justify-between cursor-pointer"
+                            onClick={() => setShowLeaderboard(!showLeaderboard)}
+                        >
+                            <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                <Trophy className="w-5 h-5 text-amber-400" />
+                                Leaderboard
+                            </h3>
+                            <div className="flex items-center gap-2">
+                                {userRank && (
+                                    <span className="text-xs px-2 py-1 rounded-full bg-teal-500/20 text-teal-400">
+                                        Your Rank: #{userRank}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {showLeaderboard && (
+                            <div className="space-y-2 mt-4">
+                                {leaderboard.length === 0 ? (
+                                    <p className="text-center py-4" style={{ color: 'var(--text-muted)' }}>No promoters yet</p>
+                                ) : (
+                                    leaderboard.map((promoter, index) => (
+                                        <div
+                                            key={promoter.id}
+                                            className={`flex items-center gap-3 p-2 rounded-lg ${promoter.id === user.id ? 'ring-2 ring-teal-400' : ''
+                                                }`}
+                                            style={{
+                                                background: promoter.id === user.id
+                                                    ? 'rgba(20, 184, 166, 0.1)'
+                                                    : 'var(--hover-bg)'
+                                            }}
+                                        >
+                                            <div className="w-8 flex justify-center">
+                                                {getRankIcon(index + 1)}
+                                            </div>
+                                            <div
+                                                className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
+                                                style={{ background: 'var(--bg-secondary)' }}
+                                            >
+                                                {promoter.avatar_url ? (
+                                                    <img src={promoter.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <User className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                                                    {promoter.full_name}
+                                                    {promoter.id === user.id && <span className="text-teal-400 text-xs ml-1">(You)</span>}
+                                                </p>
+                                                <p className="text-xs text-teal-400">{promoter.custom_id}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold text-amber-400">{promoter.total_points || 0}</p>
+                                                <LevelBadge level={promoter.current_level} size="xs" />
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* My Promoters Section - Only show if user has referred promoters */}
+                    {myPromoters.length > 0 && (
+                        <div className="card">
+                            <div
+                                className="flex items-center justify-between cursor-pointer"
+                                onClick={() => setShowMyPromoters(!showMyPromoters)}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Megaphone className="w-5 h-5 text-purple-400" />
+                                    <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                        My Promoters ({myPromoters.length})
+                                    </h3>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-purple-400 font-semibold">+{myPromotersBonus} bonus pts</span>
+                                    <ChevronDown
+                                        className={`w-5 h-5 transition-transform ${showMyPromoters ? 'rotate-180' : ''}`}
+                                        style={{ color: 'var(--text-secondary)' }}
+                                    />
+                                </div>
+                            </div>
+
+                            {showMyPromoters && (
+                                <div className="mt-3 space-y-2">
+                                    <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                                        Promoters you referred. You earn bonus points when they refer students.
+                                    </p>
+                                    {myPromoters.map((promoter) => (
+                                        <div
+                                            key={promoter.id}
+                                            className="flex items-center gap-3 p-3 rounded-lg"
+                                            style={{ background: 'var(--hover-bg)' }}
+                                        >
+                                            <div
+                                                className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0"
+                                                style={{ background: 'var(--bg-secondary)', border: '2px solid var(--border-color)' }}
+                                            >
+                                                {promoter.avatar_url ? (
+                                                    <img src={promoter.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <User className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                                                    {promoter.full_name}
+                                                </p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-xs text-teal-400">{promoter.custom_id || 'Pending'}</span>
+                                                    <LevelBadge level={promoter.current_level} size="xs" />
+                                                </div>
+                                            </div>
+                                            <div className="text-right flex-shrink-0">
+                                                <p className="text-sm font-bold text-amber-400">{promoter.total_points || 0} pts</p>
+                                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                                    {promoter.studentCount} students
+                                                </p>
+                                                {promoter.bonusEarned > 0 && (
+                                                    <p className="text-xs text-purple-400">+{promoter.bonusEarned} bonus</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Recent Referrals */}
                     {referrals.length > 0 && (
                         <div className="card">
-                            <h3 className="font-semibold mb-3 text-sm" style={{ color: 'var(--text-primary)' }}>Recent Referrals</h3>
+                            <h3 className="font-semibold mb-3 text-sm" style={{ color: 'var(--text-primary)' }}>Recent Students</h3>
                             <div className="space-y-2">
                                 {referrals.slice(0, 5).map((ref) => (
                                     <div
@@ -487,6 +751,12 @@ export default function UserDashboard({ showToast }) {
                                         <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level</p>
                                         <LevelBadge level={user.current_level} size="sm" />
                                     </div>
+                                    {user.referred_by_custom_id && (
+                                        <div className="p-3 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
+                                            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Referred By</p>
+                                            <p className="text-teal-400 font-mono">{user.referred_by_custom_id}</p>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>

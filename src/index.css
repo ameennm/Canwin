@@ -319,6 +319,13 @@ textarea.input-field {
   color: white;
 }
 
+.badge-pearl {
+  background: linear-gradient(135deg, #f9a8d4, #fef3c7, #f0fdf4);
+  color: #1f2937;
+  border: 1px solid rgba(168, 162, 158, 0.4);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
 .badge-paid {
   background: #f59e0b;
   color: white;

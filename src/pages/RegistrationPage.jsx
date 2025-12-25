@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Camera, User, ArrowLeft, Upload, Heart, AlertCircle, CalendarDays } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { Camera, User, ArrowLeft, Upload, Heart, AlertCircle, CalendarDays, Users, CheckCircle, XCircle } from 'lucide-react';
+import { supabase, validatePromoterCode, findPromoterByCustomId } from '../lib/supabase';
 import Spinner from '../components/Spinner';
 import ThemeToggle from '../components/ThemeToggle';
 
@@ -16,11 +16,17 @@ export default function RegistrationPage({ showToast }) {
         aadharNumber: '',
         dob: '',
         anniversaryDate: '',
+        referrerCode: '',  // Referrer promoter's custom ID (e.g., CNWN1001)
     });
     const [avatar, setAvatar] = useState(null);
     const [avatarPreview, setAvatarPreview] = useState(null);
     const [avatarError, setAvatarError] = useState(false);
     const [loading, setLoading] = useState(false);
+
+    // Referrer validation state
+    const [referrerValidating, setReferrerValidating] = useState(false);
+    const [referrerValid, setReferrerValid] = useState(null); // null = not checked, true = valid, false = invalid
+    const [referrerInfo, setReferrerInfo] = useState(null);
 
     // Improved image handling for mobile
     const handleAvatarChange = async (e) => {
@@ -34,14 +40,14 @@ export default function RegistrationPage({ showToast }) {
             return;
         }
 
-        if (file.size > 300 * 1024) {
+        if (file.size > 100 * 1024) {
             try {
                 const compressedFile = await compressImage(file);
                 setAvatar(compressedFile);
                 setAvatarPreview(URL.createObjectURL(compressedFile));
                 showToast('Image compressed successfully');
             } catch (err) {
-                showToast('Image must be less than 300KB. Please choose a smaller image.', 'error');
+                showToast('Image must be less than 100KB. Please choose a smaller image.', 'error');
                 return;
             }
         } else {
@@ -75,7 +81,7 @@ export default function RegistrationPage({ showToast }) {
 
                 canvas.toBlob(
                     (blob) => {
-                        if (blob && blob.size <= 300 * 1024) {
+                        if (blob && blob.size <= 100 * 1024) {
                             const compressedFile = new File([blob], file.name, {
                                 type: 'image/jpeg',
                                 lastModified: Date.now(),
@@ -84,7 +90,7 @@ export default function RegistrationPage({ showToast }) {
                         } else {
                             canvas.toBlob(
                                 (blob2) => {
-                                    if (blob2 && blob2.size <= 300 * 1024) {
+                                    if (blob2 && blob2.size <= 100 * 1024) {
                                         const compressedFile = new File([blob2], file.name, {
                                             type: 'image/jpeg',
                                             lastModified: Date.now(),
@@ -122,6 +128,55 @@ export default function RegistrationPage({ showToast }) {
     const handleAadharChange = (e) => {
         const formatted = formatAadhar(e.target.value);
         setForm({ ...form, aadharNumber: formatted });
+    };
+
+    // Validate referrer code
+    const handleReferrerCodeChange = (e) => {
+        const value = e.target.value.toUpperCase().trim();
+        setForm({ ...form, referrerCode: value });
+        setReferrerValid(null);
+        setReferrerInfo(null);
+    };
+
+    const validateReferrer = async () => {
+        const code = form.referrerCode.trim();
+
+        if (!code) {
+            setReferrerValid(null);
+            setReferrerInfo(null);
+            return;
+        }
+
+        if (!validatePromoterCode(code)) {
+            setReferrerValid(false);
+            setReferrerInfo(null);
+            showToast('Invalid referrer code format. Use format: CNWN1001', 'error');
+            return;
+        }
+
+        setReferrerValidating(true);
+        try {
+            const promoter = await findPromoterByCustomId(code);
+            if (promoter && promoter.notEligible) {
+                // Promoter exists but is Bronze level (not eligible to refer promoters)
+                setReferrerValid(false);
+                setReferrerInfo({ ...promoter, levelTooLow: true });
+                showToast(`${promoter.full_name} is not eligible to refer promoters yet (requires Silver level or above)`, 'error');
+            } else if (promoter) {
+                setReferrerValid(true);
+                setReferrerInfo(promoter);
+            } else {
+                setReferrerValid(false);
+                setReferrerInfo(null);
+                showToast('Referrer code not found or not approved', 'error');
+            }
+        } catch (err) {
+            console.error('Error validating referrer:', err);
+            setReferrerValid(false);
+            setReferrerInfo(null);
+        } finally {
+            setReferrerValidating(false);
+        }
     };
 
     const uploadAvatar = async (userId) => {
@@ -170,6 +225,15 @@ export default function RegistrationPage({ showToast }) {
             return;
         }
 
+        // If referrer code is provided but not validated, validate it first
+        if (form.referrerCode && !referrerValid) {
+            await validateReferrer();
+            if (!referrerValid) {
+                showToast('Please enter a valid referrer code or leave it empty', 'error');
+                return;
+            }
+        }
+
         if (!phone || !passwordHash) {
             showToast('Session expired. Please start again.', 'error');
             navigate('/');
@@ -191,23 +255,33 @@ export default function RegistrationPage({ showToast }) {
                 return;
             }
 
+            // Prepare user data
+            const userData = {
+                full_name: form.fullName.trim(),
+                whatsapp_number: phone,
+                aadhar_number: cleanAadhar,
+                dob: form.dob,
+                anniversary_date: form.anniversaryDate || null,
+                avatar_url: avatarUrl,
+                password_hash: passwordHash,
+                is_approved: false,
+                total_points: 0,
+                paid_referrals: 0,
+                free_referrals: 0,
+                promoter_referrals: 0,
+                current_level: 'Bronze',
+            };
+
+            // Add referrer if valid
+            if (referrerValid && referrerInfo) {
+                userData.referred_by = referrerInfo.id;
+                userData.referred_by_custom_id = referrerInfo.custom_id;
+            }
+
             // Create user in public_users table
             const { data: newUser, error: insertError } = await supabase
                 .from('public_users')
-                .insert({
-                    full_name: form.fullName.trim(),
-                    whatsapp_number: phone,
-                    aadhar_number: cleanAadhar,
-                    dob: form.dob,
-                    anniversary_date: form.anniversaryDate || null,
-                    avatar_url: avatarUrl,
-                    password_hash: passwordHash,
-                    is_approved: false,
-                    total_points: 0,
-                    paid_referrals: 0,
-                    free_referrals: 0,
-                    current_level: 'Bronze',
-                })
+                .insert(userData)
                 .select()
                 .single();
 
@@ -261,8 +335,8 @@ export default function RegistrationPage({ showToast }) {
                         <ArrowLeft className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
                     </button>
                     <div>
-                        <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Complete Registration</h1>
-                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Join CanWin</p>
+                        <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Become a Promoter</h1>
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Join CanWin Referral Program</p>
                     </div>
                 </div>
 
@@ -395,6 +469,66 @@ export default function RegistrationPage({ showToast }) {
                                 <CalendarDays className="w-5 h-5" />
                             </button>
                         </div>
+                    </div>
+
+                    {/* Referrer Code (Optional) */}
+                    <div className="card" style={{ background: 'rgba(20, 184, 166, 0.05)', border: '1px solid rgba(20, 184, 166, 0.2)' }}>
+                        <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
+                            <span className="flex items-center gap-1">
+                                <Users className="w-4 h-4 text-teal-400" />
+                                Referrer Code (Optional)
+                            </span>
+                        </label>
+                        <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+                            If another promoter referred you, enter their ID (e.g., CNWN1001)
+                        </p>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={form.referrerCode}
+                                onChange={handleReferrerCodeChange}
+                                placeholder="CNWN1001"
+                                className="input-field font-mono flex-1"
+                                disabled={loading}
+                                style={{ textTransform: 'uppercase' }}
+                            />
+                            <button
+                                type="button"
+                                onClick={validateReferrer}
+                                disabled={loading || referrerValidating || !form.referrerCode}
+                                className="btn-secondary px-4"
+                            >
+                                {referrerValidating ? <Spinner size="sm" /> : 'Verify'}
+                            </button>
+                        </div>
+
+                        {/* Referrer validation status */}
+                        {referrerValid === true && referrerInfo && (
+                            <div className="mt-3 p-3 rounded-lg flex items-center gap-2" style={{ background: 'rgba(34, 197, 94, 0.1)' }}>
+                                <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                                <div>
+                                    <p className="text-sm text-green-400 font-medium">Referrer verified!</p>
+                                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                        Referred by: {referrerInfo.full_name}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                        {referrerValid === false && (
+                            <div className="mt-3 p-3 rounded-lg flex items-center gap-2" style={{ background: 'rgba(239, 68, 68, 0.1)' }}>
+                                <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                                <div>
+                                    {referrerInfo?.levelTooLow ? (
+                                        <>
+                                            <p className="text-sm text-red-400 font-medium">{referrerInfo.full_name} is Bronze level</p>
+                                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Only Silver+ promoters can refer new promoters</p>
+                                        </>
+                                    ) : (
+                                        <p className="text-sm text-red-400">Invalid or not found. Check the code.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Submit */}

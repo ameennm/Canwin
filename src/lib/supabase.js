@@ -22,22 +22,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     },
 });
 
-// Updated Level configuration with new thresholds
+// Updated Level configuration with new thresholds including Pearl
 // Bronze: 0-99 points
 // Silver: 100-249 points
 // Gold: 250-499 points
 // Diamond: 500-999 points
+// Pearl: 1000+ points
 export const LEVELS = {
     Bronze: { min: 0, max: 99, order: 1 },
     Silver: { min: 100, max: 249, order: 2 },
     Gold: { min: 250, max: 499, order: 3 },
     Diamond: { min: 500, max: 999, order: 4 },
-};
-
-// Points per referral type
-export const POINTS = {
-    paid: 10,
-    free: 2,
+    Pearl: { min: 1000, max: Infinity, order: 5 },
 };
 
 /**
@@ -48,6 +44,7 @@ export const POINTS = {
 export function getLevel(totalPoints) {
     const points = totalPoints || 0;
 
+    if (points >= 1000) return 'Pearl';
     if (points >= 500) return 'Diamond';
     if (points >= 250) return 'Gold';
     if (points >= 100) return 'Silver';
@@ -65,7 +62,7 @@ export function getLevelProgress(totalPoints) {
     const levelConfig = LEVELS[currentLevel];
 
     // Get next level threshold
-    const thresholds = { Bronze: 100, Silver: 250, Gold: 500, Diamond: 1000 };
+    const thresholds = { Bronze: 100, Silver: 250, Gold: 500, Diamond: 1000, Pearl: 2000 };
     const currentThreshold = levelConfig.min;
     const nextThreshold = thresholds[currentLevel];
 
@@ -144,6 +141,16 @@ export function validatePhone(phone) {
 }
 
 /**
+ * Validate promoter custom ID format (CNWN followed by numbers)
+ * @param {string} customId - Promoter custom ID
+ * @returns {boolean} Whether valid
+ */
+export function validatePromoterCode(customId) {
+    if (!customId) return false;
+    return /^CNWN\d{4,}$/i.test(customId.trim());
+}
+
+/**
  * Sanitize user input to prevent XSS
  * @param {string} input - User input string
  * @returns {string} Sanitized string
@@ -172,3 +179,41 @@ export function formatDate(dateString) {
         year: 'numeric'
     });
 }
+
+/**
+ * Check if a level can refer other promoters (Silver and above)
+ * @param {string} level - Current level name
+ * @returns {boolean} Whether the level can refer promoters
+ */
+export function canReferPromoters(level) {
+    const referEligibleLevels = ['Silver', 'Gold', 'Diamond', 'Pearl'];
+    return referEligibleLevels.includes(level);
+}
+
+/**
+ * Find promoter by their custom ID (CNWN1001, etc.)
+ * Only returns promoters who are Silver level or above (eligible to refer new promoters)
+ * @param {string} customId - Promoter's custom ID
+ * @param {boolean} checkReferralEligibility - If true, only returns promoters who can refer other promoters
+ * @returns {Object|null} Promoter data or null
+ */
+export async function findPromoterByCustomId(customId, checkReferralEligibility = true) {
+    if (!validatePromoterCode(customId)) return null;
+
+    const { data, error } = await supabase
+        .from('public_users')
+        .select('id, full_name, custom_id, is_approved, current_level, total_points')
+        .eq('custom_id', customId.toUpperCase().trim())
+        .eq('is_approved', true)
+        .single();
+
+    if (error || !data) return null;
+
+    // Check if the promoter is eligible to refer other promoters (Silver+)
+    if (checkReferralEligibility && !canReferPromoters(data.current_level)) {
+        return { ...data, notEligible: true };
+    }
+
+    return data;
+}
+

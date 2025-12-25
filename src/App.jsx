@@ -4,6 +4,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import LandingPage from './pages/LandingPage';
 import RegistrationPage from './pages/RegistrationPage';
 import UserDashboard from './pages/UserDashboard';
+import AddStudentPage from './pages/AddStudentPage';
 import PendingPage from './pages/PendingPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
@@ -31,6 +32,7 @@ function App() {
           <Route path="/" element={<LandingPage showToast={showToast} />} />
           <Route path="/register" element={<RegistrationPage showToast={showToast} />} />
           <Route path="/dashboard" element={<UserDashboard showToast={showToast} />} />
+          <Route path="/add-student" element={<AddStudentPage showToast={showToast} />} />
           <Route path="/pending" element={<PendingPage showToast={showToast} />} />
           <Route path="/adminlogin" element={<AdminLogin showToast={showToast} />} />
           <Route path="/admin/dashboard" element={<AdminDashboard showToast={showToast} />} />
