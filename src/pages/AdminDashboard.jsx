@@ -468,12 +468,11 @@ export default function AdminDashboard({ showToast }) {
                                                     <span className={`text-xs px-1.5 py-0.5 rounded ${course.course_type === 'paid' ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400'}`}>
                                                         {course.course_type === 'paid' ? `₹${course.price}` : 'Free'}
                                                     </span>
-                                                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>+{course.points} pts/student</span>
                                                 </div>
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-lg font-bold text-teal-400">{course.admissions}</p>
-                                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>admissions</p>
+                                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>sold</p>
                                             </div>
                                         </div>
                                     ))}
