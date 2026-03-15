@@ -1,307 +1,43 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Camera, User, ArrowLeft, Upload, Heart, AlertCircle, CalendarDays, Users, CheckCircle, XCircle } from 'lucide-react';
-import { supabase, validatePromoterCode, findPromoterByCustomId } from '../lib/supabase';
-import Spinner from '../components/Spinner';
+import { api } from '../lib/api';
+import { ArrowLeft, User, Phone, CalendarDays, Heart, Users, CheckCircle, XCircle, AlertCircle, UserPlus } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
+import Spinner from '../components/Spinner';
 
 export default function RegistrationPage({ showToast }) {
     const navigate = useNavigate();
     const location = useLocation();
     const phone = location.state?.phone || '';
-    const passwordHash = location.state?.passwordHash || '';
+    const password = location.state?.password || '';
 
     const [form, setForm] = useState({
         fullName: '',
-        aadharNumber: '',
-        dob: '',
-        anniversaryDate: '',
-        referrerCode: '',  // Referrer promoter's custom ID (e.g., CNWN1001)
+        referrerCode: '', 
     });
-    const [avatar, setAvatar] = useState(null);
-    const [avatarPreview, setAvatarPreview] = useState(null);
-    const [avatarError, setAvatarError] = useState(false);
     const [loading, setLoading] = useState(false);
-
-    // Referrer validation state
-    const [referrerValidating, setReferrerValidating] = useState(false);
-    const [referrerValid, setReferrerValid] = useState(null); // null = not checked, true = valid, false = invalid
-    const [referrerInfo, setReferrerInfo] = useState(null);
-
-    // Improved image handling for mobile
-    const handleAvatarChange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        setAvatarError(false);
-
-        if (!file.type.startsWith('image/')) {
-            showToast('Please select an image file', 'error');
-            return;
-        }
-
-        if (file.size > 100 * 1024) {
-            try {
-                const compressedFile = await compressImage(file);
-                setAvatar(compressedFile);
-                setAvatarPreview(URL.createObjectURL(compressedFile));
-                showToast('Image compressed successfully');
-            } catch (err) {
-                showToast('Image must be less than 100KB. Please choose a smaller image.', 'error');
-                return;
-            }
-        } else {
-            setAvatar(file);
-            setAvatarPreview(URL.createObjectURL(file));
-        }
-    };
-
-    const compressImage = (file) => {
-        return new Promise((resolve, reject) => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const img = new Image();
-
-            img.onload = () => {
-                let width = img.width;
-                let height = img.height;
-                const maxSize = 400;
-
-                if (width > height && width > maxSize) {
-                    height = (height * maxSize) / width;
-                    width = maxSize;
-                } else if (height > maxSize) {
-                    width = (width * maxSize) / height;
-                    height = maxSize;
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                ctx.drawImage(img, 0, 0, width, height);
-
-                canvas.toBlob(
-                    (blob) => {
-                        if (blob && blob.size <= 100 * 1024) {
-                            const compressedFile = new File([blob], file.name, {
-                                type: 'image/jpeg',
-                                lastModified: Date.now(),
-                            });
-                            resolve(compressedFile);
-                        } else {
-                            canvas.toBlob(
-                                (blob2) => {
-                                    if (blob2 && blob2.size <= 100 * 1024) {
-                                        const compressedFile = new File([blob2], file.name, {
-                                            type: 'image/jpeg',
-                                            lastModified: Date.now(),
-                                        });
-                                        resolve(compressedFile);
-                                    } else {
-                                        reject(new Error('Cannot compress image enough'));
-                                    }
-                                },
-                                'image/jpeg',
-                                0.5
-                            );
-                        }
-                    },
-                    'image/jpeg',
-                    0.7
-                );
-            };
-
-            img.onerror = () => reject(new Error('Failed to load image'));
-            img.src = URL.createObjectURL(file);
-        });
-    };
-
-    const formatAadhar = (value) => {
-        const digits = value.replace(/\D/g, '');
-        const limited = digits.slice(0, 12);
-        const parts = [];
-        for (let i = 0; i < limited.length; i += 4) {
-            parts.push(limited.slice(i, i + 4));
-        }
-        return parts.join(' ');
-    };
-
-    const handleAadharChange = (e) => {
-        const formatted = formatAadhar(e.target.value);
-        setForm({ ...form, aadharNumber: formatted });
-    };
-
-    // Validate referrer code
-    const handleReferrerCodeChange = (e) => {
-        const value = e.target.value.toUpperCase().trim();
-        setForm({ ...form, referrerCode: value });
-        setReferrerValid(null);
-        setReferrerInfo(null);
-    };
-
-    const validateReferrer = async () => {
-        const code = form.referrerCode.trim();
-
-        if (!code) {
-            setReferrerValid(null);
-            setReferrerInfo(null);
-            return;
-        }
-
-        if (!validatePromoterCode(code)) {
-            setReferrerValid(false);
-            setReferrerInfo(null);
-            showToast('Invalid referrer code format. Use format: CNWN1001', 'error');
-            return;
-        }
-
-        setReferrerValidating(true);
-        try {
-            const promoter = await findPromoterByCustomId(code);
-            if (promoter && promoter.notEligible) {
-                // Promoter exists but is Bronze level (not eligible to refer promoters)
-                setReferrerValid(false);
-                setReferrerInfo({ ...promoter, levelTooLow: true });
-                showToast(`${promoter.full_name} is not eligible to refer promoters yet (requires Silver level or above)`, 'error');
-            } else if (promoter) {
-                setReferrerValid(true);
-                setReferrerInfo(promoter);
-            } else {
-                setReferrerValid(false);
-                setReferrerInfo(null);
-                showToast('Referrer code not found or not approved', 'error');
-            }
-        } catch (err) {
-            console.error('Error validating referrer:', err);
-            setReferrerValid(false);
-            setReferrerInfo(null);
-        } finally {
-            setReferrerValidating(false);
-        }
-    };
-
-    const uploadAvatar = async (userId) => {
-        if (!avatar) return null;
-
-        const fileExt = avatar.name.split('.').pop() || 'jpg';
-        const fileName = `${userId}-${Date.now()}.${fileExt}`;
-
-        try {
-            const { error: uploadError } = await supabase.storage
-                .from('avatars')
-                .upload(fileName, avatar, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
-
-            if (uploadError) {
-                console.log('Avatar upload error:', uploadError.message);
-                throw uploadError;
-            }
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(fileName);
-
-            return publicUrl;
-        } catch (err) {
-            console.log('Avatar upload error:', err);
-            throw err;
-        }
-    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        // Validate avatar is required
-        if (!avatar) {
-            setAvatarError(true);
-            showToast('Please upload your photo', 'error');
-            return;
-        }
-
-        const cleanAadhar = form.aadharNumber.replace(/\s/g, '');
-        if (!form.fullName.trim() || !form.dob || cleanAadhar.length !== 12) {
-            showToast('Please fill in all required fields correctly', 'error');
-            return;
-        }
-
-        // If referrer code is provided but not validated, validate it first
-        if (form.referrerCode && !referrerValid) {
-            await validateReferrer();
-            if (!referrerValid) {
-                showToast('Please enter a valid referrer code or leave it empty', 'error');
-                return;
-            }
-        }
-
-        if (!phone || !passwordHash) {
-            showToast('Session expired. Please start again.', 'error');
-            navigate('/');
+        if (!form.fullName.trim()) {
+            showToast('Please fill all required fields', 'error');
             return;
         }
 
         setLoading(true);
-
         try {
-            const tempId = crypto.randomUUID();
+            const data = await api.auth.register({
+                name: form.fullName.trim(),
+                phone: phone,
+                password: password,
+                referral_code: form.referrerCode,
+            });
 
-            // Upload avatar (required)
-            let avatarUrl = null;
-            try {
-                avatarUrl = await uploadAvatar(tempId);
-            } catch (uploadErr) {
-                showToast('Failed to upload photo. Please try again.', 'error');
-                setLoading(false);
-                return;
-            }
-
-            // Prepare user data
-            const userData = {
-                full_name: form.fullName.trim(),
-                whatsapp_number: phone,
-                aadhar_number: cleanAadhar,
-                dob: form.dob,
-                anniversary_date: form.anniversaryDate || null,
-                avatar_url: avatarUrl,
-                password_hash: passwordHash,
-                is_approved: false,
-                total_points: 0,
-                paid_referrals: 0,
-                free_referrals: 0,
-                promoter_referrals: 0,
-                current_level: 'Bronze',
-            };
-
-            // Add referrer if valid
-            if (referrerValid && referrerInfo) {
-                userData.referred_by = referrerInfo.id;
-                userData.referred_by_custom_id = referrerInfo.custom_id;
-            }
-
-            // Create user in public_users table
-            const { data: newUser, error: insertError } = await supabase
-                .from('public_users')
-                .insert(userData)
-                .select()
-                .single();
-
-            if (insertError) {
-                if (insertError.code === '23505') {
-                    if (insertError.message?.includes('aadhar')) {
-                        showToast('This Aadhar number is already registered', 'error');
-                    } else {
-                        showToast('This mobile number is already registered', 'error');
-                    }
-                    return;
-                }
-                throw insertError;
-            }
-
-            showToast('Registration successful!');
-            navigate('/pending', { state: { user: newUser } });
+            showToast('Registration successful! Please wait for admin approval.');
+            navigate('/');
         } catch (err) {
             console.error('Registration error:', err);
-            showToast(err.message || 'Registration failed. Please try again.', 'error');
+            showToast(err.message || 'Registration failed', 'error');
         } finally {
             setLoading(false);
         }
@@ -341,43 +77,7 @@ export default function RegistrationPage({ showToast }) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4 fade-in">
-                    {/* Avatar Upload - Required */}
-                    <div className="flex flex-col items-center gap-2 mb-4">
-                        <label
-                            className={`avatar-upload ${avatarError ? 'ring-2 ring-red-500 ring-offset-2' : ''}`}
-                            style={{ cursor: 'pointer' }}
-                        >
-                            {avatarPreview ? (
-                                <img src={avatarPreview} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}>
-                                    <User className="w-10 h-10" style={{ color: 'var(--text-muted)' }} />
-                                </div>
-                            )}
-                            <div className="avatar-upload-overlay">
-                                <Camera className="w-6 h-6 text-white" />
-                            </div>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleAvatarChange}
-                                className="hidden"
-                            />
-                        </label>
-                        <div className="text-center">
-                            <p className="text-sm" style={{ color: avatarError ? '#ef4444' : 'var(--text-secondary)' }}>
-                                {avatarError ? (
-                                    <span className="flex items-center justify-center gap-1">
-                                        <AlertCircle className="w-4 h-4" />
-                                        Photo is required
-                                    </span>
-                                ) : (
-                                    'Tap to upload photo *'
-                                )}
-                            </p>
-                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Max 300KB (auto-compressed)</p>
-                        </div>
-                    </div>
+
 
                     {/* Phone Display */}
                     <div className="card">
@@ -400,76 +100,7 @@ export default function RegistrationPage({ showToast }) {
                         />
                     </div>
 
-                    {/* Aadhar Number */}
-                    <div>
-                        <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-                            Aadhar Number <span className="text-red-400">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={form.aadharNumber}
-                            onChange={handleAadharChange}
-                            placeholder="XXXX XXXX XXXX"
-                            className="input-field font-mono"
-                            disabled={loading}
-                            maxLength={14}
-                            inputMode="numeric"
-                        />
-                    </div>
 
-                    {/* Date of Birth - With calendar button */}
-                    <div>
-                        <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-                            Date of Birth <span className="text-red-400">*</span>
-                        </label>
-                        <div className="relative">
-                            <input
-                                id="dob-input"
-                                type="date"
-                                value={form.dob}
-                                onChange={(e) => setForm({ ...form, dob: e.target.value })}
-                                className="input-field date-input"
-                                disabled={loading}
-                                max={new Date().toISOString().split('T')[0]}
-                            />
-                            <button
-                                type="button"
-                                onClick={() => openDatePicker('dob-input')}
-                                className="absolute right-3 top-1/2 -translate-y-1/2"
-                                style={{ color: 'var(--text-muted)' }}
-                            >
-                                <CalendarDays className="w-5 h-5" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Anniversary (Optional) */}
-                    <div>
-                        <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-                            <span className="flex items-center gap-1">
-                                <Heart className="w-4 h-4 text-pink-400" />
-                                Anniversary (Optional)
-                            </span>
-                        </label>
-                        <div className="relative">
-                            <input
-                                id="anniversary-input"
-                                type="date"
-                                value={form.anniversaryDate}
-                                onChange={(e) => setForm({ ...form, anniversaryDate: e.target.value })}
-                                className="input-field date-input"
-                                disabled={loading}
-                            />
-                            <button
-                                type="button"
-                                onClick={() => openDatePicker('anniversary-input')}
-                                className="absolute right-3 top-1/2 -translate-y-1/2"
-                                style={{ color: 'var(--text-muted)' }}
-                            >
-                                <CalendarDays className="w-5 h-5" />
-                            </button>
-                        </div>
-                    </div>
 
                     {/* Referrer Code (Optional) */}
                     <div className="card" style={{ background: 'rgba(20, 184, 166, 0.05)', border: '1px solid rgba(20, 184, 166, 0.2)' }}>
@@ -486,49 +117,13 @@ export default function RegistrationPage({ showToast }) {
                             <input
                                 type="text"
                                 value={form.referrerCode}
-                                onChange={handleReferrerCodeChange}
+                                onChange={(e) => setForm({...form, referrerCode: e.target.value})}
                                 placeholder="CNWN1001"
                                 className="input-field font-mono flex-1"
                                 disabled={loading}
                                 style={{ textTransform: 'uppercase' }}
                             />
-                            <button
-                                type="button"
-                                onClick={validateReferrer}
-                                disabled={loading || referrerValidating || !form.referrerCode}
-                                className="btn-secondary px-4"
-                            >
-                                {referrerValidating ? <Spinner size="sm" /> : 'Verify'}
-                            </button>
                         </div>
-
-                        {/* Referrer validation status */}
-                        {referrerValid === true && referrerInfo && (
-                            <div className="mt-3 p-3 rounded-lg flex items-center gap-2" style={{ background: 'rgba(34, 197, 94, 0.1)' }}>
-                                <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-                                <div>
-                                    <p className="text-sm text-green-400 font-medium">Referrer verified!</p>
-                                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                        Referred by: {referrerInfo.full_name}
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                        {referrerValid === false && (
-                            <div className="mt-3 p-3 rounded-lg flex items-center gap-2" style={{ background: 'rgba(239, 68, 68, 0.1)' }}>
-                                <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                                <div>
-                                    {referrerInfo?.levelTooLow ? (
-                                        <>
-                                            <p className="text-sm text-red-400 font-medium">{referrerInfo.full_name} is Bronze level</p>
-                                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Only Silver+ promoters can refer new promoters</p>
-                                        </>
-                                    ) : (
-                                        <p className="text-sm text-red-400">Invalid or not found. Check the code.</p>
-                                    )}
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {/* Submit */}
@@ -537,7 +132,7 @@ export default function RegistrationPage({ showToast }) {
                         disabled={loading}
                         className="btn-primary w-full flex items-center justify-center gap-2 mt-6"
                     >
-                        {loading ? <Spinner size="sm" /> : <><Upload className="w-5 h-5" /> Complete Registration</>}
+                        {loading ? <Spinner size="sm" /> : <><UserPlus className="w-5 h-5" /> Complete Registration</>}
                     </button>
 
                     <p className="text-center text-sm" style={{ color: 'var(--text-muted)' }}>

@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Lock, ArrowRight, Award, Shield, Crown, Gem, Zap, Eye, EyeOff, UserPlus, LogIn } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import Spinner from '../components/Spinner';
+import { api } from '../lib/api';
+import { LogIn, UserPlus, Phone, Lock, Eye, EyeOff, ArrowRight, Zap, Award, Shield, Crown, Gem } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
+import Spinner from '../components/Spinner';
 
 export default function LandingPage({ showToast }) {
     const [phone, setPhone] = useState('');
@@ -15,66 +15,23 @@ export default function LandingPage({ showToast }) {
     const [mode, setMode] = useState('login'); // 'login' or 'signup'
     const navigate = useNavigate();
 
-    // Simple hash function for password (for demo purposes)
-    const hashPassword = async (pwd) => {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(pwd + 'canwin_salt_2024');
-        const hash = await crypto.subtle.digest('SHA-256', data);
-        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-    };
-
     const handleLogin = async (e) => {
         e.preventDefault();
-
         const cleanPhone = phone.trim().replace(/\s/g, '');
-        if (!cleanPhone) {
-            showToast('Please enter your mobile number', 'error');
-            return;
-        }
-
-        if (!password || password.length < 6) {
-            showToast('Password must be at least 6 characters', 'error');
+        if (!cleanPhone || !password) {
+            showToast('Please fill all fields', 'error');
             return;
         }
 
         setLoading(true);
-
         try {
-            // Hash the password
-            const hashedPassword = await hashPassword(password);
-
-            // Check if user exists and password matches
-            const { data: user, error } = await supabase
-                .from('public_users')
-                .select('*')
-                .eq('whatsapp_number', cleanPhone)
-                .single();
-
-            if (error && error.code === 'PGRST116') {
-                showToast('User not found. Please sign up first.', 'error');
-                setMode('signup');
-                setLoading(false);
-                return;
-            }
-
-            if (error) throw error;
-
-            // Verify password
-            if (user.password_hash !== hashedPassword) {
-                showToast('Incorrect password', 'error');
-                setLoading(false);
-                return;
-            }
-
-            if (!user.is_approved) {
-                navigate('/pending', { state: { user } });
-            } else {
-                localStorage.setItem('canwin_user', JSON.stringify(user));
-                navigate('/dashboard');
-            }
+            const data = await api.auth.login(cleanPhone, password);
+            localStorage.setItem('canwin_user', JSON.stringify(data.user));
+            localStorage.setItem('canwin_token', data.token);
+            navigate('/dashboard');
         } catch (err) {
             console.error('Login error:', err);
-            showToast('Something went wrong. Please try again.', 'error');
+            showToast(err.message || 'Login failed', 'error');
         } finally {
             setLoading(false);
         }
@@ -82,47 +39,13 @@ export default function LandingPage({ showToast }) {
 
     const handleSignup = async (e) => {
         e.preventDefault();
-
         const cleanPhone = phone.trim().replace(/\s/g, '');
-        if (!cleanPhone) {
-            showToast('Please enter your mobile number', 'error');
+        if (!cleanPhone || password.length < 6 || password !== confirmPassword) {
+            showToast('Invalid input or passwords do not match', 'error');
             return;
         }
 
-        if (!password || password.length < 6) {
-            showToast('Password must be at least 6 characters', 'error');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            showToast('Passwords do not match', 'error');
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            // Check if user already exists
-            const { data: existingUser } = await supabase
-                .from('public_users')
-                .select('id')
-                .eq('whatsapp_number', cleanPhone)
-                .single();
-
-            if (existingUser) {
-                showToast('This mobile number is already registered. Please login.', 'error');
-                setMode('login');
-                setLoading(false);
-                return;
-            }
-        } catch (err) {
-            // User doesn't exist - this is expected for signup
-        }
-
-        // Hash password and pass to registration
-        const hashedPassword = await hashPassword(password);
-        navigate('/register', { state: { phone: cleanPhone, passwordHash: hashedPassword } });
-        setLoading(false);
+        navigate('/register', { state: { phone: cleanPhone, password } });
     };
 
     const handleSubmit = (e) => {
@@ -160,22 +83,26 @@ export default function LandingPage({ showToast }) {
                 </div>
 
                 {/* Hero */}
-                <div className="text-center mb-8 fade-in">
-                    <h2 className="text-3xl font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
-                        Refer & Earn
+                <div className="text-center mb-10 fade-in">
+                    <h2 className="text-4xl font-black mb-3 tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                        Refer & <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-purple-500">Earn Rewards</span>
                     </h2>
-                    <p style={{ color: 'var(--text-secondary)' }}>
-                        Get points for every student you refer
+                    <p className="text-lg opacity-80" style={{ color: 'var(--text-secondary)' }}>
+                        Join our premium network and turn your referrals into earnings.
                     </p>
 
-                    <div className="flex justify-center gap-4 mt-4">
-                        <div className="flex items-center gap-1 text-sm">
-                            <Zap className="w-4 h-4 text-amber-400" />
-                            <span className="text-amber-500">Paid: +10</span>
+                    <div className="flex justify-center gap-6 mt-6">
+                        <div className="flex flex-col items-center gap-1 group">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Zap className="w-6 h-6 text-amber-500" />
+                            </div>
+                            <span className="text-xs font-bold text-amber-500/80 uppercase tracking-wider">Paid: +10</span>
                         </div>
-                        <div className="flex items-center gap-1 text-sm">
-                            <Zap className="w-4 h-4 text-green-400" />
-                            <span className="text-green-500">Free: +2</span>
+                        <div className="flex flex-col items-center gap-1 group">
+                            <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Zap className="w-6 h-6 text-green-500" />
+                            </div>
+                            <span className="text-xs font-bold text-green-500/80 uppercase tracking-wider">Free: +2</span>
                         </div>
                     </div>
                 </div>

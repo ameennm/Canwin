@@ -2,11 +2,12 @@ import { Award, Shield, Crown, Gem, Star } from 'lucide-react';
 
 // Level configuration for Bronze, Silver, Gold, Diamond, Pearl
 const levelConfig = {
-    Bronze: { icon: Award, class: 'badge-bronze' },
-    Silver: { icon: Shield, class: 'badge-silver' },
-    Gold: { icon: Crown, class: 'badge-gold' },
-    Diamond: { icon: Gem, class: 'badge-diamond' },
-    Pearl: { icon: Star, class: 'badge-pearl' },
+    'Super Admin': { icon: Shield, class: 'badge-admin' },
+    'Platinum': { icon: Crown, class: 'badge-gold' },
+    'SDO': { icon: Gem, class: 'badge-diamond' },
+    'SOP': { icon: Star, class: 'badge-pearl' },
+    'SO': { icon: Shield, class: 'badge-silver' },
+    'JSO': { icon: Award, class: 'badge-bronze' },
 };
 
 export default function LevelBadge({ level, size = 'md' }) {

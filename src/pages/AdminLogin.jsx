@@ -1,56 +1,37 @@
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, Shield, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import Spinner from '../components/Spinner';
+import { api } from '../lib/api';
+import { Shield, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
+import Spinner from '../components/Spinner';
 
 export default function AdminLogin({ showToast }) {
     const navigate = useNavigate();
-    const [form, setForm] = useState({ email: '', password: '' });
+    const [form, setForm] = useState({ id: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [checkingSession, setCheckingSession] = useState(true);
-
-    useEffect(() => {
-        checkSession();
-    }, []);
-
-    const checkSession = async () => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                navigate('/admin/dashboard');
-            }
-        } catch (err) {
-            console.error('Session check error:', err);
-        } finally {
-            setCheckingSession(false);
-        }
-    };
+    const [checkingSession, setCheckingSession] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (!form.email || !form.password) {
+        if (!form.id || !form.password) {
             showToast('Please fill in all fields', 'error');
             return;
         }
 
         setLoading(true);
-
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: form.email,
-                password: form.password,
-            });
-
-            if (error) throw error;
-
-            showToast('Login successful!');
-            navigate('/admin/dashboard');
+            const response = await api.auth.login(form.id, form.password);
+            
+            if (response.user && response.user.rank === 'Super Admin') {
+                localStorage.setItem('token', response.token);
+                localStorage.setItem('canwin_admin', 'true');
+                showToast('Login successful!');
+                navigate('/admin/dashboard');
+            } else {
+                showToast('Unauthorized access', 'error');
+            }
         } catch (err) {
-            console.error('Login error:', err);
             showToast(err.message || 'Login failed', 'error');
         } finally {
             setLoading(false);
@@ -87,15 +68,15 @@ export default function AdminLogin({ showToast }) {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                                Email Address
+                                Username / ID
                             </label>
                             <div className="relative">
                                 <Mail className="input-icon" />
                                 <input
-                                    type="email"
-                                    value={form.email}
-                                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                                    placeholder="admin@canwin.com"
+                                    type="text"
+                                    value={form.id}
+                                    onChange={(e) => setForm({ ...form, id: e.target.value })}
+                                    placeholder="admin"
                                     className="input-field input-with-icon"
                                     disabled={loading}
                                 />

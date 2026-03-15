@@ -8,6 +8,9 @@ import AddStudentPage from './pages/AddStudentPage';
 import PendingPage from './pages/PendingPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import MyAdmissionsPage from './pages/MyAdmissionsPage';
+import MyTeamPage from './pages/MyTeamPage';
+import WithdrawPage from './pages/WithdrawPage';
 import Toast from './components/Toast';
 
 function App() {
@@ -33,9 +36,14 @@ function App() {
           <Route path="/register" element={<RegistrationPage showToast={showToast} />} />
           <Route path="/dashboard" element={<UserDashboard showToast={showToast} />} />
           <Route path="/add-student" element={<AddStudentPage showToast={showToast} />} />
+          <Route path="/my-admissions" element={<MyAdmissionsPage showToast={showToast} />} />
+          <Route path="/my-team" element={<MyTeamPage showToast={showToast} />} />
+          <Route path="/withdraw" element={<WithdrawPage showToast={showToast} />} />
           <Route path="/pending" element={<PendingPage showToast={showToast} />} />
           <Route path="/adminlogin" element={<AdminLogin showToast={showToast} />} />
+          <Route path="/admin/login" element={<AdminLogin showToast={showToast} />} />
           <Route path="/admin/dashboard" element={<AdminDashboard showToast={showToast} />} />
+          <Route path="/admin" element={<AdminDashboard showToast={showToast} />} />
         </Routes>
       </div>
     </ThemeProvider>

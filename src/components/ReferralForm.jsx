@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { UserPlus, BookOpen, Phone, CreditCard, User } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
+import { validateAadhar } from '../lib/utils';
 import Spinner from './Spinner';
 
 export default function ReferralForm({ userId, onSuccess }) {
@@ -20,11 +21,7 @@ export default function ReferralForm({ userId, onSuccess }) {
 
     const fetchCourses = async () => {
         try {
-            const { data } = await supabase
-                .from('courses')
-                .select('*')
-                .eq('is_active', true)
-                .order('name');
+            const data = await api.courses.list();
             setCourses(data || []);
         } catch (err) {
             console.error('Error fetching courses:', err);
@@ -52,7 +49,7 @@ export default function ReferralForm({ userId, onSuccess }) {
         e.preventDefault();
 
         const cleanAadhar = form.studentAadhar.replace(/\s/g, '');
-        if (!form.studentName.trim() || !form.studentContact.trim() || cleanAadhar.length !== 12 || !form.courseId) {
+        if (!form.studentName.trim() || !form.studentContact.trim() || !validateAadhar(cleanAadhar) || !form.courseId) {
             onSuccess && onSuccess('Please fill all fields correctly');
             return;
         }
@@ -60,24 +57,19 @@ export default function ReferralForm({ userId, onSuccess }) {
         setLoading(true);
 
         try {
-            const { error } = await supabase
-                .from('referrals')
-                .insert({
-                    referrer_id: userId,
-                    course_id: form.courseId,
-                    student_name: form.studentName.trim(),
-                    student_contact: form.studentContact.trim(),
-                    student_aadhar: cleanAadhar,
-                    status: 'pending',
-                });
-
-            if (error) throw error;
+            await api.admissions.create({
+                user_id: userId,
+                course_id: form.courseId,
+                student_name: form.studentName.trim(),
+                student_contact: form.studentContact.trim(),
+                student_aadhar: cleanAadhar,
+            });
 
             setForm({ studentName: '', studentContact: '', studentAadhar: '', courseId: '' });
             onSuccess && onSuccess('Referral submitted successfully!');
         } catch (err) {
             console.error('Error submitting referral:', err);
-            onSuccess && onSuccess('Failed to submit referral');
+            onSuccess && onSuccess('Failed to submit referral: ' + err.message);
         } finally {
             setLoading(false);
         }

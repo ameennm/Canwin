@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, UserPlus, BookOpen, Phone, CreditCard, User, RefreshCw, Zap } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import Spinner from '../components/Spinner';
+import { 
+    ArrowLeft, User, BookOpen, Search, 
+    CheckCircle, AlertCircle, Send, Sparkles,
+    Calendar, Phone, CreditCard, UserPlus, RefreshCw, Zap
+} from 'lucide-react';
+import { api } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
+import Spinner from '../components/Spinner';
 
 export default function AddStudentPage({ showToast }) {
     const navigate = useNavigate();
@@ -12,12 +16,10 @@ export default function AddStudentPage({ showToast }) {
     const [form, setForm] = useState({
         studentName: '',
         studentContact: '',
-        studentAadhar: '',
         courseId: '',
     });
     const [loading, setLoading] = useState(false);
     const [loadingCourses, setLoadingCourses] = useState(true);
-    const [loadingUser, setLoadingUser] = useState(true);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('canwin_user');
@@ -25,52 +27,14 @@ export default function AddStudentPage({ showToast }) {
             navigate('/');
             return;
         }
-        const parsedUser = JSON.parse(storedUser);
-
-        // Verify user is still valid and approved
-        verifyUser(parsedUser.whatsapp_number);
+        setUser(JSON.parse(storedUser));
+        fetchCourses();
     }, [navigate]);
-
-    const verifyUser = async (whatsappNumber) => {
-        try {
-            const { data: userData, error } = await supabase
-                .from('public_users')
-                .select('*')
-                .eq('whatsapp_number', whatsappNumber)
-                .single();
-
-            if (error || !userData?.is_approved) {
-                localStorage.removeItem('canwin_user');
-                navigate('/');
-                return;
-            }
-
-            setUser(userData);
-            localStorage.setItem('canwin_user', JSON.stringify(userData));
-        } catch (err) {
-            console.error('Error verifying user:', err);
-            navigate('/');
-        } finally {
-            setLoadingUser(false);
-        }
-    };
-
-    useEffect(() => {
-        if (user) {
-            fetchCourses();
-        }
-    }, [user]);
 
     const fetchCourses = async () => {
         setLoadingCourses(true);
         try {
-            const { data, error } = await supabase
-                .from('courses')
-                .select('*')
-                .eq('is_active', true)
-                .order('name');
-
-            if (error) throw error;
+            const data = await api.courses.list();
             setCourses(data || []);
         } catch (err) {
             console.error('Error fetching courses:', err);
@@ -80,64 +44,35 @@ export default function AddStudentPage({ showToast }) {
         }
     };
 
-    const formatAadhar = (value) => {
-        const digits = value.replace(/\D/g, '');
-        const limited = digits.slice(0, 12);
-        const parts = [];
-        for (let i = 0; i < limited.length; i += 4) {
-            parts.push(limited.slice(i, i + 4));
-        }
-        return parts.join(' ');
-    };
-
-    const handleAadharChange = (e) => {
-        const formatted = formatAadhar(e.target.value);
-        setForm({ ...form, studentAadhar: formatted });
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        const cleanAadhar = form.studentAadhar.replace(/\s/g, '');
-        if (!form.studentName.trim() || !form.studentContact.trim() || cleanAadhar.length !== 12 || !form.courseId) {
-            showToast('Please fill all fields correctly', 'error');
+        if (!form.studentName.trim() || !form.studentContact.trim() || !form.courseId) {
+            showToast('Please fill all fields', 'error');
             return;
         }
 
         setLoading(true);
-
         try {
-            const { error } = await supabase
-                .from('referrals')
-                .insert({
-                    referrer_id: user.id,
-                    course_id: form.courseId,
-                    student_name: form.studentName.trim(),
-                    student_contact: form.studentContact.trim(),
-                    student_aadhar: cleanAadhar,
-                    status: 'pending',
-                });
+            await api.admissions.create({
+                student_name: form.studentName.trim(),
+                student_phone: form.studentContact.trim(),
+                course_id: form.courseId,
+                admitted_by: user.id
+            });
 
-            if (error) throw error;
-
-            showToast('Student referral submitted successfully!');
-            setForm({ studentName: '', studentContact: '', studentAadhar: '', courseId: '' });
-
-            // Navigate back to dashboard after successful submission
-            setTimeout(() => {
-                navigate('/dashboard');
-            }, 1500);
+            showToast('Student enrolled successfully!');
+            setTimeout(() => navigate('/dashboard'), 1500);
         } catch (err) {
-            console.error('Error submitting referral:', err);
-            showToast('Failed to submit referral', 'error');
+            console.error('Error submitting admission:', err);
+            showToast(err.message || 'Failed to enroll student', 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    const selectedCourse = courses.find(c => c.id === form.courseId);
+    const selectedCourse = courses.find(c => c.id == form.courseId);
 
-    if (loadingUser) {
+    if (loadingCourses && !user) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <Spinner size="lg" />
@@ -182,18 +117,14 @@ export default function AddStudentPage({ showToast }) {
                 <div className="card mb-4">
                     <div className="flex items-center gap-3">
                         <div
-                            className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center"
+                            className="w-12 h-12 rounded-full flex items-center justify-center"
                             style={{ border: '2px solid rgba(20, 184, 166, 0.5)', background: 'var(--bg-secondary)' }}
                         >
-                            {user.avatar_url ? (
-                                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                                <User className="w-6 h-6" style={{ color: 'var(--text-muted)' }} />
-                            )}
+                            <User className="w-6 h-6" style={{ color: 'var(--text-muted)' }} />
                         </div>
                         <div className="flex-1">
-                            <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{user.full_name}</p>
-                            <p className="text-xs text-teal-400 font-mono">{user.custom_id}</p>
+                            <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{user.name}</p>
+                            <p className="text-xs text-teal-400 font-mono">{user.referral_code}</p>
                         </div>
                         <div className="text-right">
                             <p className="text-lg font-bold text-amber-400">{user.total_points || 0}</p>
@@ -237,26 +168,6 @@ export default function AddStudentPage({ showToast }) {
                                 className="input-field input-with-icon"
                                 disabled={loading}
                                 inputMode="tel"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Student Aadhar */}
-                    <div className="card">
-                        <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-                            Student Aadhar <span className="text-red-400">*</span>
-                        </label>
-                        <div className="relative">
-                            <CreditCard className="input-icon" />
-                            <input
-                                type="text"
-                                value={form.studentAadhar}
-                                onChange={handleAadharChange}
-                                placeholder="XXXX XXXX XXXX"
-                                className="input-field input-with-icon font-mono"
-                                disabled={loading}
-                                maxLength={14}
-                                inputMode="numeric"
                             />
                         </div>
                     </div>

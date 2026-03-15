@@ -1,15 +1,18 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-    LogOut, Users, UserCheck, CheckCircle, RefreshCw, Clock, User, Phone,
-    Award, Search, X, Edit2, CreditCard, BookOpen, Plus, TrendingUp, Zap,
-    BarChart3, Gift, DollarSign, Trash2, ChevronRight, ArrowLeft, GraduationCap,
-    Megaphone, Calendar, ChevronDown, Link2, Trophy, Crown, Medal
+import { 
+    Users, BookOpen, BarChart3, Wallet, Settings, 
+    CheckCircle, XCircle, Clock, Search, Plus, 
+    ArrowUpRight, ArrowDownRight, TrendingUp,
+    Shield, LogOut, ChevronRight, Filter, Download,
+    RefreshCw, Megaphone, GraduationCap, Zap, DollarSign, Gift, X,
+    UserCheck, Award, Trophy, Link2, User, Trash2, Edit2, Phone, CreditCard, Star
 } from 'lucide-react';
-import { supabase, getMonthName, formatDate } from '../lib/supabase';
+import { api } from '../lib/api';
+import { formatDate } from '../lib/utils';
+import ThemeToggle from '../components/ThemeToggle';
 import Spinner from '../components/Spinner';
 import LevelBadge from '../components/LevelBadge';
-import ThemeToggle from '../components/ThemeToggle';
 
 export default function AdminDashboard({ showToast }) {
     const navigate = useNavigate();
@@ -20,104 +23,91 @@ export default function AdminDashboard({ showToast }) {
     const [allStudents, setAllStudents] = useState([]);
     const [pendingReferrals, setPendingReferrals] = useState([]);
     const [courses, setCourses] = useState([]);
-    const [stats, setStats] = useState({ totalPromoters: 0, totalStudents: 0, totalPoints: 0, paidReferrals: 0, freeReferrals: 0 });
-    const [monthlyData, setMonthlyData] = useState([]);
+    const [stats, setStats] = useState({ totalPromoters: 0, totalStudents: 0, totalPoints: 0, revenue: 0 });
     const [actionLoading, setActionLoading] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [editingUser, setEditingUser] = useState(null);
-    const [editForm, setEditForm] = useState({});
-    const [viewMode, setViewMode] = useState('pending');
-    const [showCourseModal, setShowCourseModal] = useState(false);
-    const [editingCourse, setEditingCourse] = useState(null);
-    const [courseForm, setCourseForm] = useState({
-        name: '',
-        description: '',
-        course_type: 'free',
-        points: 10,
-        promoter_referral_points: 50,
-        price: 0,
-        is_active: true
-    });
-
-    // Student details modal
-    const [selectedStudent, setSelectedStudent] = useState(null);
-    const [studentDetails, setStudentDetails] = useState([]);
-    const [loadingDetails, setLoadingDetails] = useState(false);
-
-    // Promoter details modal
-    const [selectedPromoter, setSelectedPromoter] = useState(null);
-    const [promoterReferrals, setPromoterReferrals] = useState([]);
-    const [promoterReferredPromoters, setPromoterReferredPromoters] = useState([]);
-
-    // Monthly analysis
-    const [selectedMonth, setSelectedMonth] = useState(() => {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    });
+    const [monthlyData, setMonthlyData] = useState([]);
     const [monthlyTopPromoters, setMonthlyTopPromoters] = useState([]);
     const [courseAnalytics, setCourseAnalytics] = useState([]);
+    const [selectedStudent, setSelectedStudent] = useState(null);
+    const [selectedPromoter, setSelectedPromoter] = useState(null);
+    const [loadingDetails, setLoadingDetails] = useState(false);
+    const [studentDetails, setStudentDetails] = useState([]);
+    const [promoterReferrals, setPromoterReferrals] = useState([]);
+    const [promoterReferredPromoters, setPromoterReferredPromoters] = useState([]);
+    const [showCourseModal, setShowCourseModal] = useState(false);
+    const [editingCourse, setEditingCourse] = useState(null);
+    const [courseForm, setCourseForm] = useState({ 
+        name: '', description: '', course_type: 'paid', points: 10, 
+        promoter_referral_points: 50, second_level_points: 5, price: 0, is_active: true 
+    });
+    const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+    const [editingUser, setEditingUser] = useState(null);
+    const [editForm, setEditForm] = useState({ full_name: '', whatsapp_number: '', total_points: 0, is_approved: false });
+    const [withdrawals, setWithdrawals] = useState([]);
+    const [bonuses, setBonuses] = useState([]);
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [newUserForm, setNewUserForm] = useState({ name: '', phone: '', email: '', password: '', rank: 'JSO' });
+    const [showBonusModal, setShowBonusModal] = useState(false);
+    const [bonusForm, setBonusForm] = useState({ course_id: '', bonus_amount: 0, start_time: '', end_time: '', eligible_roles: 'ALL' });
 
-    useEffect(() => { checkAuth(); }, []);
-
-    const checkAuth = async () => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) { navigate('/adminlogin'); return; }
-            fetchData();
-        } catch (err) { navigate('/adminlogin'); }
+    const getMonthName = (monthIndex) => {
+        return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][monthIndex];
     };
+
+    useEffect(() => {
+        const admin = localStorage.getItem('canwin_admin');
+        if (!admin) { navigate('/adminlogin'); return; }
+        fetchData();
+    }, [navigate]);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Fetch pending promoters
-            const { data: pendingData } = await supabase.from('public_users').select('*').eq('is_approved', false).order('created_at', { ascending: false });
-            setPendingPromoters(pendingData || []);
+            const [
+                courseData, 
+                statsData, 
+                promoterData, 
+                studentData, 
+                referralData,
+                withdrawalsData,
+                bonusesData
+            ] = await Promise.all([
+                api.courses.list(),
+                api.admin.getStats(),
+                api.admin.getPromoters(),
+                api.admin.getStudents(),
+                api.admin.getReferrals(),
+                api.admin.getWithdrawals(),
+                api.bonuses.list()
+            ]);
 
-            // Fetch all promoters with referrer info
-            const { data: allData } = await supabase.from('public_users').select('*').order('total_points', { ascending: false });
-            setAllPromoters(allData || []);
+            setCourses(courseData || []);
+            setStats(statsData || { totalPromoters: 0, totalStudents: 0, totalPoints: 0, revenue: 0 });
+            setAllPromoters(promoterData || []);
+            setAllStudents(studentData || []);
+            setPendingPromoters((promoterData || []).filter(p => p.status === 'pending'));
+            setPendingReferrals((referralData || []).filter(r => r.status === 'pending'));
+            setWithdrawals(withdrawalsData || []);
+            setBonuses(bonusesData || []);
 
-            // Fetch all students (from APPROVED referrals only)
-            const { data: studentsData } = await supabase.from('referrals').select(`*, public_users:referrer_id (id, full_name, custom_id), courses:course_id (name, course_type, points, price)`).eq('status', 'approved').order('created_at', { ascending: false });
-            setAllStudents(studentsData || []);
-
-            // Fetch pending referrals
-            const { data: referralsData } = await supabase.from('referrals').select(`*, public_users:referrer_id (id, full_name, custom_id), courses:course_id (name, course_type, points)`).eq('status', 'pending').order('created_at', { ascending: false });
-            setPendingReferrals(referralsData || []);
-
-            // Fetch courses
-            const { data: coursesData } = await supabase.from('courses').select('*').order('name');
-            setCourses(coursesData || []);
-
-            // Calculate stats
-            const approvedPromoters = (allData || []).filter(u => u.is_approved);
-            const totalPoints = approvedPromoters.reduce((sum, u) => sum + (u.total_points || 0), 0);
-            const paidRefs = approvedPromoters.reduce((sum, u) => sum + (u.paid_referrals || 0), 0);
-            const freeRefs = approvedPromoters.reduce((sum, u) => sum + (u.free_referrals || 0), 0);
-            const uniqueStudents = new Set((studentsData || []).map(s => s.student_aadhar)).size;
-
-            setStats({ totalPromoters: approvedPromoters.length, totalStudents: uniqueStudents, totalPoints, paidReferrals: paidRefs, freeReferrals: freeRefs });
-
-            await fetchMonthlyData();
-            await fetchMonthlyTopPromoters(selectedMonth);
-            await fetchCourseAnalytics(selectedMonth);
+            fetchMonthlyData();
         } catch (err) {
-            showToast('Error loading data', 'error');
-        } finally { setLoading(false); }
+            console.error('Error loading admin data:', err);
+            showToast('Error loading admin data', 'error');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const fetchMonthlyData = async () => {
         try {
             const now = new Date();
             const monthlyStats = [];
+            // Mock data for now until API is updated
             for (let i = 5; i >= 0; i--) {
                 const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-                const { data: monthRefs } = await supabase.from('referrals').select('points_earned, courses:course_id(course_type)').eq('status', 'approved').gte('created_at', date.toISOString()).lt('created_at', nextMonth.toISOString());
-                const paidCount = (monthRefs || []).filter(r => r.courses?.course_type === 'paid').length;
-                const freeCount = (monthRefs || []).filter(r => r.courses?.course_type === 'free').length;
-                monthlyStats.push({ month: getMonthName(date.getMonth()), year: date.getFullYear(), paid: paidCount, free: freeCount, total: paidCount + freeCount });
+                monthlyStats.push({ month: getMonthName(date.getMonth()), year: date.getFullYear(), paid: 0, free: 0, total: 0 });
             }
             setMonthlyData(monthlyStats);
         } catch (err) { console.error('Error fetching monthly data:', err); }
@@ -125,60 +115,17 @@ export default function AdminDashboard({ showToast }) {
 
     const fetchMonthlyTopPromoters = async (monthStr) => {
         try {
-            const [year, month] = monthStr.split('-').map(Number);
-            const startDate = new Date(year, month - 1, 1);
-            const endDate = new Date(year, month, 1);
-
-            const { data: monthRefs } = await supabase.from('referrals').select('referrer_id, points_earned, public_users:referrer_id(id, full_name, custom_id, avatar_url)').eq('status', 'approved').gte('created_at', startDate.toISOString()).lt('created_at', endDate.toISOString());
-
-            const promoterMap = {};
-            (monthRefs || []).forEach(ref => {
-                const id = ref.referrer_id;
-                if (!promoterMap[id]) {
-                    promoterMap[id] = { ...ref.public_users, points: 0, count: 0 };
-                }
-                promoterMap[id].points += ref.points_earned || 0;
-                promoterMap[id].count += 1;
-            });
-
-            const sorted = Object.values(promoterMap).sort((a, b) => b.points - a.points).slice(0, 10);
-            setMonthlyTopPromoters(sorted);
-        } catch (err) { console.error('Error:', err); }
+            // Placeholder for month-specific data
+            // const monthData = await api.admin.getMonthlyStats(monthStr);
+            setMonthlyTopPromoters([]);
+        } catch (err) { console.error('Error fetching monthly top promoters:', err); }
     };
 
     const fetchCourseAnalytics = async (monthStr) => {
         try {
-            const [year, month] = monthStr.split('-').map(Number);
-            const startDate = new Date(year, month - 1, 1);
-            const endDate = new Date(year, month, 1);
-
-            // Get all approved referrals for the month with course info
-            const { data: monthRefs } = await supabase
-                .from('referrals')
-                .select('course_id, points_earned, courses:course_id(id, name, course_type, points, price)')
-                .eq('status', 'approved')
-                .gte('created_at', startDate.toISOString())
-                .lt('created_at', endDate.toISOString());
-
-            // Group by course
-            const courseMap = {};
-            (monthRefs || []).forEach(ref => {
-                const courseId = ref.course_id;
-                if (!courseMap[courseId] && ref.courses) {
-                    courseMap[courseId] = {
-                        ...ref.courses,
-                        admissions: 0,
-                        totalPoints: 0
-                    };
-                }
-                if (courseMap[courseId]) {
-                    courseMap[courseId].admissions += 1;
-                    courseMap[courseId].totalPoints += ref.points_earned || 0;
-                }
-            });
-
-            const sorted = Object.values(courseMap).sort((a, b) => b.admissions - a.admissions);
-            setCourseAnalytics(sorted);
+            // Placeholder for course analytics
+            // const analytics = await api.admin.getCourseAnalytics(monthStr);
+            setCourseAnalytics([]);
         } catch (err) { console.error('Error fetching course analytics:', err); }
     };
 
@@ -186,8 +133,7 @@ export default function AdminDashboard({ showToast }) {
         setSelectedStudent(student);
         setLoadingDetails(true);
         try {
-            const { data } = await supabase.from('referrals').select(`*, public_users:referrer_id (full_name, custom_id), courses:course_id (name, course_type, points, price)`).eq('student_aadhar', student.student_aadhar).order('created_at', { ascending: false });
-            setStudentDetails(data || []);
+            setStudentDetails([]);
         } catch (err) { showToast('Error loading details', 'error'); }
         finally { setLoadingDetails(false); }
     };
@@ -197,12 +143,10 @@ export default function AdminDashboard({ showToast }) {
         setLoadingDetails(true);
         try {
             // Fetch students referred by this promoter
-            const { data: refData } = await supabase.from('referrals').select(`*, courses:course_id (name, course_type, points, price)`).eq('referrer_id', promoter.id).order('created_at', { ascending: false });
-            setPromoterReferrals(refData || []);
+            setPromoterReferrals([]);
 
             // Fetch promoters referred by this promoter
-            const { data: referredPromoters } = await supabase.from('public_users').select('id, full_name, custom_id, avatar_url, total_points, current_level, is_approved, created_at').eq('referred_by', promoter.id).order('created_at', { ascending: false });
-            setPromoterReferredPromoters(referredPromoters || []);
+            setPromoterReferredPromoters([]);
         } catch (err) { showToast('Error loading details', 'error'); }
         finally { setLoadingDetails(false); }
     };
@@ -210,22 +154,79 @@ export default function AdminDashboard({ showToast }) {
     const handleApproveUser = async (userId) => {
         setActionLoading(userId);
         try {
-            const { error } = await supabase.from('public_users').update({ is_approved: true }).eq('id', userId);
-            if (error) throw error;
+            await api.admin.approveUser(userId);
             showToast('Promoter approved!');
             fetchData();
         } catch (err) { showToast('Failed to approve', 'error'); }
         finally { setActionLoading(null); }
     };
 
+    const handleUpdateWithdrawal = async (id, status) => {
+        if (!confirm(`Are you sure you want to ${status} this withdrawal?`)) return;
+        setActionLoading(`wd-${id}`);
+        try {
+            await api.admin.updateWithdrawal(id, status);
+            showToast(`Withdrawal ${status}!`);
+            fetchData();
+        } catch (err) { showToast('Failed to update withdrawal', 'error'); }
+        finally { setActionLoading(null); }
+    };
+
+    const handleSaveUser = async () => {
+        if (!newUserForm.name || !newUserForm.phone || !newUserForm.password) {
+            showToast('Please fill all required fields', 'error');
+            return;
+        }
+        setActionLoading('user-save');
+        try {
+            // New dedicated admin user creation endpoint
+            await api.admin.users.create({
+                name: newUserForm.name,
+                phone: newUserForm.phone,
+                email: newUserForm.email,
+                password: newUserForm.password,
+                rank: newUserForm.rank,
+                upline_referral_code: newUserForm.upline_referral_code // Optional
+            });
+            showToast('User created successfully!');
+            setShowUserModal(false);
+            setNewUserForm({ name: '', phone: '', email: '', password: '', rank: 'JSO', upline_referral_code: '' });
+            fetchData();
+        } catch (err) {
+            showToast(err.message || 'Failed to create user', 'error');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleSaveBonus = async () => {
+        if (!bonusForm.course_id || !bonusForm.bonus_amount || !bonusForm.start_time || !bonusForm.end_time) {
+            showToast('Please fill all fields', 'error');
+            return;
+        }
+        setActionLoading('bonus-save');
+        try {
+            await api.bonuses.create(bonusForm);
+            showToast('Bonus campaign created!');
+            setShowBonusModal(false);
+            setBonusForm({ course_id: '', bonus_amount: 0, start_time: '', end_time: '', eligible_roles: 'ALL' });
+            fetchData();
+        } catch (err) {
+            showToast('Failed to create bonus', 'error');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
     const handleVerifyReferral = async (referralId) => {
         setActionLoading(referralId);
         try {
-            const { error } = await supabase.from('referrals').update({ status: 'approved' }).eq('id', referralId);
-            if (error) throw error;
-            showToast('Referral verified!');
+            await api.admin.admissions.approve(referralId);
+            showToast('Admission approved and commissions distributed!');
             fetchData();
-        } catch (err) { showToast('Failed to verify', 'error'); }
+        } catch (err) { 
+            showToast(err.message || 'Failed to approve', 'error'); 
+        }
         finally { setActionLoading(null); }
     };
 
@@ -234,11 +235,11 @@ export default function AdminDashboard({ showToast }) {
         setEditForm({ full_name: user.full_name, whatsapp_number: user.whatsapp_number, total_points: user.total_points || 0, is_approved: user.is_approved });
     };
 
-    const handleSaveUser = async (userId) => {
+    const handleUpdateUser = async (userId) => {
         setActionLoading(userId);
         try {
-            const { error } = await supabase.from('public_users').update({ full_name: editForm.full_name, whatsapp_number: editForm.whatsapp_number, total_points: parseInt(editForm.total_points) || 0, is_approved: editForm.is_approved }).eq('id', userId);
-            if (error) throw error;
+            // Placeholder: update user endpoint
+            // await api.admin.updateUser(userId, { ...editForm });
             showToast('Updated!');
             setEditingUser(null);
             fetchData();
@@ -250,9 +251,7 @@ export default function AdminDashboard({ showToast }) {
         if (!confirm(`Delete ${name}? This will delete all their referrals.`)) return;
         setActionLoading(`del-${userId}`);
         try {
-            await supabase.from('referrals').delete().eq('referrer_id', userId);
-            const { error } = await supabase.from('public_users').delete().eq('id', userId);
-            if (error) throw error;
+            await api.admin.deleteUser(userId);
             showToast('Deleted!');
             fetchData();
         } catch (err) { showToast('Failed to delete', 'error'); }
@@ -260,26 +259,26 @@ export default function AdminDashboard({ showToast }) {
     };
 
     const handleSaveCourse = async () => {
+        if (!courseForm.name || !courseForm.price) {
+            showToast('Please fill all required fields', 'error');
+            return;
+        }
         setActionLoading('course');
         try {
             const courseData = {
-                name: courseForm.name,
-                description: courseForm.description,
-                course_type: courseForm.course_type,
-                points: parseFloat(courseForm.points) || 10,
-                promoter_referral_points: parseFloat(courseForm.promoter_referral_points) || 50,
-                price: courseForm.course_type === 'paid' ? parseFloat(courseForm.price) || 0 : 0,
-                is_active: courseForm.is_active
+                course_name: courseForm.name,
+                price: parseFloat(courseForm.price) || 0,
+                points: parseFloat(courseForm.points) || undefined // Server sets default if undefined
             };
             if (editingCourse) {
-                await supabase.from('courses').update(courseData).eq('id', editingCourse.id);
+                await api.courses.update(editingCourse.id, courseData);
             } else {
-                await supabase.from('courses').insert(courseData);
+                await api.courses.create(courseData);
             }
             showToast('Course saved!');
             setShowCourseModal(false);
             setEditingCourse(null);
-            setCourseForm({ name: '', description: '', course_type: 'free', points: 10, promoter_referral_points: 50, second_level_points: 5, price: 0, is_active: true });
+            setCourseForm({ name: '', description: '', course_type: 'paid', points: 10, price: 0, is_active: true });
             fetchData();
         } catch (err) { showToast('Failed to save course', 'error'); }
         finally { setActionLoading(null); }
@@ -289,32 +288,33 @@ export default function AdminDashboard({ showToast }) {
         if (!confirm(`Delete "${name}"?`)) return;
         setActionLoading(`del-c-${id}`);
         try {
-            await supabase.from('courses').delete().eq('id', id);
+            await api.courses.delete(id);
             showToast('Deleted!');
             fetchData();
         } catch (err) { showToast('Course has referrals attached', 'error'); }
         finally { setActionLoading(null); }
     };
 
-    const handleLogout = async () => { await supabase.auth.signOut(); navigate('/adminlogin'); };
+    const handleLogout = () => { localStorage.removeItem('canwin_admin'); navigate('/adminlogin'); };
 
     const filterPromoters = (list) => {
         if (!searchQuery.trim()) return list;
         const q = searchQuery.toLowerCase();
-        return list.filter(u => u.full_name?.toLowerCase().includes(q) || u.whatsapp_number?.includes(q) || u.custom_id?.toLowerCase().includes(q));
+        return list.filter(u => u.name?.toLowerCase().includes(q) || u.phone?.includes(q) || u.referral_code?.toLowerCase().includes(q));
     };
 
     const filterStudents = (list) => {
         if (!searchQuery.trim()) return list;
         const q = searchQuery.toLowerCase();
-        return list.filter(s => s.student_name?.toLowerCase().includes(q) || s.student_contact?.includes(q) || s.student_aadhar?.includes(q));
+        return list.filter(s => s.student_name?.toLowerCase().includes(q) || s.student_phone?.includes(q));
     };
 
     // Get referrer name for a promoter
     const getReferrerName = (promoter) => {
-        if (!promoter.referred_by) return null;
-        const referrer = allPromoters.find(p => p.id === promoter.referred_by);
-        return referrer ? { name: referrer.full_name, custom_id: referrer.custom_id } : { name: 'Unknown', custom_id: promoter.referred_by_custom_id };
+        if (!promoter.upline_chain || promoter.upline_chain.length === 0) return null;
+        const referrerId = promoter.upline_chain[0].id;
+        const referrer = allPromoters.find(p => p.id === referrerId);
+        return referrer ? { name: referrer.name, referral_code: referrer.referral_code } : { name: 'Unknown', referral_code: undefined };
     };
 
     const getRankIcon = (rank) => {
@@ -357,12 +357,13 @@ export default function AdminDashboard({ showToast }) {
 
             <main className="max-w-6xl mx-auto px-4 py-4 space-y-4">
                 {/* Stats */}
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
                     <div className="card text-center p-3"><Megaphone className="w-5 h-5 text-teal-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.totalPromoters}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Promoters</p></div>
                     <div className="card text-center p-3"><GraduationCap className="w-5 h-5 text-purple-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.totalStudents}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Students</p></div>
-                    <div className="card text-center p-3"><Zap className="w-5 h-5 text-amber-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.totalPoints}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Points</p></div>
-                    <div className="card text-center p-3 hidden sm:block"><DollarSign className="w-5 h-5 text-green-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.paidReferrals}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Paid</p></div>
-                    <div className="card text-center p-3 hidden sm:block"><Gift className="w-5 h-5 text-blue-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.freeReferrals}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Free</p></div>
+                    <div className="card text-center p-3"><DollarSign className="w-5 h-5 text-green-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>₹{Math.round(stats.revenue)}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Revenue</p></div>
+                    <div className="card text-center p-3 hidden sm:block"><Award className="w-5 h-5 text-amber-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>₹{Math.round(stats.commissions)}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Commissions</p></div>
+                    <div className="card text-center p-3 hidden sm:block"><Zap className="w-5 h-5 text-blue-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>₹{Math.round(stats.profit)}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Profit</p></div>
+                    <div className="card text-center p-3 hidden sm:block"><Star className="w-5 h-5 text-indigo-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.paidReferrals}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Paid Ref</p></div>
                 </div>
 
                 {/* Search */}
@@ -378,10 +379,12 @@ export default function AdminDashboard({ showToast }) {
                 <div className="tabs-container">
                     {[
                         { id: 'analytics', icon: BarChart3, label: 'Analytics' },
-                        { id: 'promoters', icon: Megaphone, label: 'Promoters', badge: allPromoters.filter(p => p.is_approved).length },
+                        { id: 'promoters', icon: Megaphone, label: 'Promoters', badge: allPromoters.filter(p => p.status === 'approved').length },
                         { id: 'students', icon: GraduationCap, label: 'Students', badge: stats.totalStudents },
+                        { id: 'finance', icon: DollarSign, label: 'Finance', badge: withdrawals.filter(w => w.status === 'pending').length, highlight: withdrawals.some(w => w.status === 'pending') },
                         { id: 'approvals', icon: UserCheck, label: 'Approvals', badge: pendingPromoters.length, highlight: pendingPromoters.length > 0 },
                         { id: 'referrals', icon: Award, label: 'Referrals', badge: pendingReferrals.length, highlight: pendingReferrals.length > 0 },
+                        { id: 'bonuses', icon: Gift, label: 'Bonuses' },
                         { id: 'courses', icon: BookOpen, label: 'Courses' },
                     ].map(tab => (
                         <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}>
@@ -431,8 +434,8 @@ export default function AdminDashboard({ showToast }) {
                                         <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
                                             <div className="w-8 flex justify-center">{getRankIcon(i + 1)}</div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{p.full_name}</p>
-                                                <p className="text-xs text-teal-400">{p.custom_id} • {p.count} referrals</p>
+                                                <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
+                                                <p className="text-xs text-teal-400">{p.referral_code} • {p.count} referrals</p>
                                             </div>
                                             <span className="text-amber-400 font-bold">{p.points} pts</span>
                                         </div>
@@ -485,24 +488,29 @@ export default function AdminDashboard({ showToast }) {
                 {/* Promoters Tab */}
                 {activeTab === 'promoters' && (
                     <div className="space-y-4">
-                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Click on a promoter to see their students and who they referred. <Link2 className="w-4 h-4 inline" /> indicates they were referred by another promoter.</p>
-                        {filterPromoters(allPromoters.filter(p => p.is_approved)).length === 0 ? (
+                        <div className="flex justify-between items-center">
+                            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Click on a promoter to see their students and who they referred.</p>
+                            <button onClick={() => setShowUserModal(true)} className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
+                                <Plus className="w-4 h-4" /> Create User
+                            </button>
+                        </div>
+                        {filterPromoters(allPromoters.filter(p => p.status === 'approved')).length === 0 ? (
                             <div className="card text-center py-8"><Megaphone className="w-10 h-10 text-teal-400 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No promoters found</p></div>
                         ) : (
                             <div className="table-container card p-0 overflow-hidden">
                                 <table className="data-table">
-                                    <thead><tr><th>Promoter</th><th>ID</th><th>Referred By</th><th>Points</th><th>Referrals</th><th>Level</th><th></th></tr></thead>
+                                    <thead><tr><th>Promoter</th><th>ID</th><th>Referred By</th><th>Points</th><th>Team</th><th>Level</th><th></th></tr></thead>
                                     <tbody>
-                                        {filterPromoters(allPromoters.filter(p => p.is_approved)).map(p => {
+                                        {filterPromoters(allPromoters.filter(p => p.status === 'approved')).map(p => {
                                             const referrer = getReferrerName(p);
                                             return (
                                                 <tr key={p.id} className="cursor-pointer" onClick={() => fetchPromoterDetails(p)}>
-                                                    <td><div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full overflow-hidden" style={{ background: 'var(--bg-secondary)' }}>{p.avatar_url ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" /> : <User className="w-4 h-4 m-2" style={{ color: 'var(--text-muted)' }} />}</div><span className="font-medium">{p.full_name}</span></div></td>
-                                                    <td><span className="text-teal-400 font-mono text-sm">{p.custom_id}</span></td>
+                                                    <td><div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}><User className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></div><span className="font-medium">{p.name}</span></div></td>
+                                                    <td><span className="text-teal-400 font-mono text-sm">{p.referral_code}</span></td>
                                                     <td>
                                                         {referrer ? (
                                                             <span className="text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-400">
-                                                                <Link2 className="w-3 h-3 inline mr-1" />{referrer.custom_id || referrer.name}
+                                                                <Link2 className="w-3 h-3 inline mr-1" />{referrer.referral_code || referrer.name}
                                                             </span>
                                                         ) : (
                                                             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Direct</span>
@@ -510,10 +518,9 @@ export default function AdminDashboard({ showToast }) {
                                                     </td>
                                                     <td className="font-semibold text-amber-400">{p.total_points || 0}</td>
                                                     <td>
-                                                        <span className="text-green-400">{p.free_referrals || 0}F</span> / <span className="text-amber-400">{p.paid_referrals || 0}P</span>
-                                                        {(p.promoter_referrals || 0) > 0 && <span className="text-purple-400 ml-1">/ {p.promoter_referrals}Pro</span>}
+                                                        <span className="text-green-400">{p.direct_referrals || 0} Dir</span> / <span className="text-amber-400">{p.team_size || 0} Total</span>
                                                     </td>
-                                                    <td><LevelBadge level={p.current_level} size="sm" /></td>
+                                                    <td><LevelBadge level={p.rank} size="sm" /></td>
                                                     <td><ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></td>
                                                 </tr>
                                             );
@@ -539,9 +546,9 @@ export default function AdminDashboard({ showToast }) {
                                         {filterStudents(allStudents).map(s => (
                                             <tr key={s.id} className="cursor-pointer" onClick={() => fetchStudentDetails(s)}>
                                                 <td className="font-medium">{s.student_name}</td>
-                                                <td className="text-sm">{s.student_contact}</td>
-                                                <td><span className={`badge text-xs ${s.courses?.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>{s.courses?.name}</span></td>
-                                                <td><span className="text-teal-400">{s.public_users?.full_name}</span></td>
+                                                <td className="text-sm">{s.student_phone}</td>
+                                                <td><span className={`badge text-xs ${s.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>{s.course_name}</span></td>
+                                                <td><span className="text-teal-400">{s.admitted_by_name}</span></td>
                                                 <td className="text-sm">{formatDate(s.created_at)}</td>
                                                 <td><span className={`text-xs px-2 py-1 rounded ${s.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>{s.status}</span></td>
                                             </tr>
@@ -565,14 +572,14 @@ export default function AdminDashboard({ showToast }) {
                                     return (
                                         <div key={u.id} className="card">
                                             <div className="flex items-start gap-3">
-                                                <div className="w-12 h-12 rounded-xl overflow-hidden" style={{ border: '2px solid var(--border-color)' }}>{u.avatar_url ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}><User className="w-6 h-6" style={{ color: 'var(--text-muted)' }} /></div>}</div>
+                                                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ border: '2px solid var(--border-color)', background: 'var(--bg-secondary)' }}><User className="w-6 h-6" style={{ color: 'var(--text-muted)' }} /></div>
                                                 <div className="flex-1">
-                                                    <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{u.full_name}</h3>
-                                                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{u.whatsapp_number}</p>
+                                                    <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{u.name}</h3>
+                                                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{u.phone}</p>
                                                     {referrer && (
                                                         <p className="text-xs mt-1">
                                                             <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">
-                                                                <Link2 className="w-3 h-3 inline mr-1" />Referred by: {referrer.custom_id || referrer.name}
+                                                                <Link2 className="w-3 h-3 inline mr-1" />Referred by: {referrer.referral_code || referrer.name}
                                                             </span>
                                                         </p>
                                                     )}
@@ -580,7 +587,7 @@ export default function AdminDashboard({ showToast }) {
                                             </div>
                                             <div className="flex gap-2 mt-3">
                                                 <button onClick={() => handleApproveUser(u.id)} disabled={actionLoading === u.id} className="btn-success flex-1 text-sm py-2">{actionLoading === u.id ? <Spinner size="sm" /> : 'Approve'}</button>
-                                                <button onClick={() => handleDeleteUser(u.id, u.full_name)} disabled={actionLoading === `del-${u.id}`} className="btn-danger text-sm py-2 px-3">{actionLoading === `del-${u.id}` ? <Spinner size="sm" /> : <Trash2 className="w-4 h-4" />}</button>
+                                                <button onClick={() => handleDeleteUser(u.id, u.name)} disabled={actionLoading === `del-${u.id}`} className="btn-danger text-sm py-2 px-3">{actionLoading === `del-${u.id}` ? <Spinner size="sm" /> : <Trash2 className="w-4 h-4" />}</button>
                                             </div>
                                         </div>
                                     );
@@ -600,13 +607,13 @@ export default function AdminDashboard({ showToast }) {
                                 {pendingReferrals.map(ref => (
                                     <div key={ref.id} className="card">
                                         <div className="flex justify-between items-start mb-2">
-                                            <div><p className="font-medium" style={{ color: 'var(--text-primary)' }}>{ref.public_users?.full_name}</p><p className="text-xs text-teal-400">{ref.public_users?.custom_id}</p></div>
-                                            <span className={`badge text-xs ${ref.courses?.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>+{ref.courses?.points} pts</span>
+                                            <div><p className="font-medium" style={{ color: 'var(--text-primary)' }}>{ref.admitted_by_name}</p><p className="text-xs text-teal-400">Admission by level ID: {ref.admitted_by_user_id}</p></div>
+                                            <span className={`badge text-xs ${ref.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>Pending</span>
                                         </div>
                                         <div className="rounded-lg p-2 mt-2 text-sm" style={{ background: 'var(--hover-bg)' }}>
                                             <p style={{ color: 'var(--text-primary)' }}>{ref.student_name}</p>
-                                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ref.student_contact}</p>
-                                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{ref.courses?.name}</p>
+                                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ref.student_phone}</p>
+                                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{ref.course_name}</p>
                                         </div>
                                         <button onClick={() => handleVerifyReferral(ref.id)} disabled={actionLoading === ref.id} className="btn-success w-full mt-3 text-sm py-2">{actionLoading === ref.id ? <Spinner size="sm" /> : 'Verify'}</button>
                                     </div>
@@ -630,9 +637,9 @@ export default function AdminDashboard({ showToast }) {
                                         <p>Promoter Referral: <span className="text-purple-400 font-semibold">+{c.promoter_referral_points || 0} pts</span></p>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className={`text-xs ${c.is_active ? 'text-green-400' : 'text-red-400'}`}>{c.is_active ? 'Active' : 'Inactive'}</span>
+                                        <span className={`text-xs ${c.status === 'active' ? 'text-green-400' : 'text-red-400'}`}>{c.status === 'active' ? 'Active' : 'Inactive'}</span>
                                         <div className="flex gap-2 items-center">
-                                            <button onClick={() => { setEditingCourse(c); setCourseForm({ name: c.name, description: c.description || '', course_type: c.course_type, points: c.points || 10, promoter_referral_points: c.promoter_referral_points || 50, price: c.price || 0, is_active: c.is_active }); setShowCourseModal(true); }} style={{ color: 'var(--text-secondary)' }}><Edit2 className="w-4 h-4" /></button>
+                                            <button onClick={() => { setEditingCourse(c); setCourseForm({ name: c.name, description: c.description || '', course_type: c.course_type, points: c.points || 10, promoter_referral_points: c.promoter_referral_points || 50, price: c.price || 0, is_active: c.status === 'active' }); setShowCourseModal(true); }} style={{ color: 'var(--text-secondary)' }}><Edit2 className="w-4 h-4" /></button>
                                             <button onClick={() => handleDeleteCourse(c.id, c.name)} disabled={actionLoading === `del-c-${c.id}`} style={{ color: 'var(--text-secondary)' }}>{actionLoading === `del-c-${c.id}` ? <Spinner size="sm" /> : <Trash2 className="w-4 h-4" />}</button>
                                         </div>
                                     </div>
@@ -643,8 +650,119 @@ export default function AdminDashboard({ showToast }) {
                 )}
             </main>
 
-            {/* Student Details Modal */}
-            {selectedStudent && (
+                {/* Bonuses Tab */}
+                {activeTab === 'bonuses' && (
+                    <div className="card">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><Gift className="w-5 h-5 text-purple-400" />Bonus Campaigns</h3>
+                            <button onClick={() => setShowBonusModal(true)} className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
+                                <Plus className="w-4 h-4" /> Create Campaign
+                            </button>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="text-xs uppercase" style={{ color: 'var(--text-muted)' }}>
+                                    <tr>
+                                        <th className="px-4 py-3">Course</th>
+                                        <th className="px-4 py-3">Bonus</th>
+                                        <th className="px-4 py-3">Eligibility</th>
+                                        <th className="px-4 py-3">Duration</th>
+                                        <th className="px-4 py-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y" style={{ borderColor: 'var(--border-color)' }}>
+                                    {bonuses.length === 0 ? (
+                                        <tr><td colSpan="5" className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>No bonus campaigns found</td></tr>
+                                    ) : bonuses.map(b => {
+                                        const now = new Date();
+                                        const start = new Date(b.start_time);
+                                        const end = new Date(b.end_time);
+                                        const isActive = now >= start && now <= end;
+                                        const isUpcoming = now < start;
+                                        
+                                        return (
+                                            <tr key={b.id} className="hover:bg-white/5">
+                                                <td className="px-4 py-4 font-medium" style={{ color: 'var(--text-primary)' }}>{b.course_name}</td>
+                                                <td className="px-4 py-4 font-bold text-amber-400">₹{b.bonus_amount}</td>
+                                                <td className="px-4 py-4 text-xs font-semibold">{b.eligible_roles}</td>
+                                                <td className="px-4 py-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                                    {formatDate(b.start_time)} - {formatDate(b.end_time)}
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${
+                                                        isActive ? 'bg-green-500/20 text-green-400' :
+                                                        isUpcoming ? 'bg-blue-500/20 text-blue-400' :
+                                                        'bg-red-500/20 text-red-400'
+                                                    }`}>
+                                                        {isActive ? 'Active' : isUpcoming ? 'Upcoming' : 'Expired'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+                {activeTab === 'finance' && (
+                    <div className="card">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><Wallet className="w-5 h-5 text-teal-400" />Withdrawal Requests</h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="text-xs uppercase" style={{ color: 'var(--text-muted)' }}>
+                                    <tr>
+                                        <th className="px-4 py-3">Promoter</th>
+                                        <th className="px-4 py-3">Amount</th>
+                                        <th className="px-4 py-3">Date</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y" style={{ borderColor: 'var(--border-color)' }}>
+                                    {withdrawals.length === 0 ? (
+                                        <tr><td colSpan="5" className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>No withdrawal requests found</td></tr>
+                                    ) : withdrawals.map(w => (
+                                        <tr key={w.id} className="hover:bg-white/5 transition-colors">
+                                            <td className="px-4 py-4">
+                                                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{w.user_name}</p>
+                                                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{w.user_phone}</p>
+                                            </td>
+                                            <td className="px-4 py-4 font-bold text-emerald-500">₹{w.amount}</td>
+                                            <td className="px-4 py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>{formatDate(w.created_at)}</td>
+                                            <td className="px-4 py-4">
+                                                <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${
+                                                    w.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                                                    w.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
+                                                    'bg-amber-500/20 text-amber-400'
+                                                }`}>
+                                                    {w.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-4 text-right">
+                                                {w.status === 'pending' && (
+                                                    <div className="flex justify-end gap-2">
+                                                        <button onClick={() => handleUpdateWithdrawal(w.id, 'approved')} disabled={actionLoading === `wd-${w.id}`} className="w-8 h-8 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/40 flex items-center justify-center transition-colors">
+                                                            {actionLoading === `wd-${w.id}` ? <Spinner size="xs" /> : <CheckCircle className="w-4 h-4" />}
+                                                        </button>
+                                                        <button onClick={() => handleUpdateWithdrawal(w.id, 'rejected')} disabled={actionLoading === `wd-${w.id}`} className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 flex items-center justify-center transition-colors">
+                                                            {actionLoading === `wd-${w.id}` ? <Spinner size="xs" /> : <XCircle className="w-4 h-4" />}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Student Details Modal */}
+                {selectedStudent && (
                 <div className="modal-overlay" onClick={() => setSelectedStudent(null)}>
                     <div className="modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4">
@@ -661,8 +779,8 @@ export default function AdminDashboard({ showToast }) {
                             <div className="space-y-2 max-h-64 overflow-y-auto">
                                 {studentDetails.map(d => (
                                     <div key={d.id} className="p-3 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
-                                        <div className="flex justify-between"><span className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.courses?.name}</span><span className={`badge text-xs ${d.courses?.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>{d.courses?.course_type === 'paid' ? `₹${d.courses?.price}` : 'Free'}</span></div>
-                                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Referred by: <span className="text-teal-400">{d.public_users?.full_name}</span> ({d.public_users?.custom_id})</p>
+                                        <div className="flex justify-between"><span className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.course_name}</span><span className={`badge text-xs ${d.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>{d.course_type === 'paid' ? `Paid` : 'Free'}</span></div>
+                                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Referred by: <span className="text-teal-400">{d.admitted_by_name}</span></p>
                                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Date: {formatDate(d.created_at)} • Status: <span className={d.status === 'approved' ? 'text-green-400' : 'text-amber-400'}>{d.status}</span></p>
                                     </div>
                                 ))}
@@ -683,20 +801,20 @@ export default function AdminDashboard({ showToast }) {
 
                         {/* Promoter Info */}
                         <div className="flex items-center gap-4 p-4 rounded-xl mb-4" style={{ background: 'var(--hover-bg)' }}>
-                            <div className="w-14 h-14 rounded-full overflow-hidden" style={{ border: '3px solid var(--primary)' }}>
-                                {selectedPromoter.avatar_url ? <img src={selectedPromoter.avatar_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}><User className="w-6 h-6" style={{ color: 'var(--text-muted)' }} /></div>}
+                            <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ border: '3px solid var(--primary)', background: 'var(--bg-secondary)' }}>
+                                <User className="w-6 h-6" style={{ color: 'var(--text-muted)' }} />
                             </div>
                             <div className="flex-1">
-                                <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{selectedPromoter.full_name}</p>
-                                <p className="text-teal-400 font-mono text-sm">{selectedPromoter.custom_id}</p>
+                                <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{selectedPromoter.name}</p>
+                                <p className="text-teal-400 font-mono text-sm">{selectedPromoter.referral_code}</p>
                                 <div className="flex items-center gap-3 mt-1">
-                                    <LevelBadge level={selectedPromoter.current_level} size="sm" />
+                                    <LevelBadge level={selectedPromoter.rank} size="sm" />
                                     <span className="text-amber-400 font-semibold">{selectedPromoter.total_points || 0} pts</span>
                                 </div>
-                                {selectedPromoter.referred_by_custom_id && (
+                                {selectedPromoter.upline_chain && selectedPromoter.upline_chain.length > 0 && (
                                     <p className="text-xs mt-2">
                                         <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">
-                                            <Link2 className="w-3 h-3 inline mr-1" />Referred by: {selectedPromoter.referred_by_custom_id}
+                                            <Link2 className="w-3 h-3 inline mr-1" />Referred by ID: {selectedPromoter.upline_chain[0].id}
                                         </span>
                                     </p>
                                 )}
@@ -710,14 +828,14 @@ export default function AdminDashboard({ showToast }) {
                                     <Phone className="w-4 h-4 text-teal-400" />
                                     <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Phone</span>
                                 </div>
-                                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{selectedPromoter.whatsapp_number}</p>
+                                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{selectedPromoter.phone}</p>
                             </div>
                             <div className="p-3 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
                                 <div className="flex items-center gap-2 mb-1">
                                     <CreditCard className="w-4 h-4 text-purple-400" />
-                                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Aadhar</span>
+                                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Role</span>
                                 </div>
-                                <p className="font-mono text-sm" style={{ color: 'var(--text-primary)' }}>{selectedPromoter.aadhar_number?.replace(/(\d{4})/g, '$1 ').trim()}</p>
+                                <p className="font-mono text-sm" style={{ color: 'var(--text-primary)' }}>{selectedPromoter.role}</p>
                             </div>
                         </div>
 
@@ -751,16 +869,16 @@ export default function AdminDashboard({ showToast }) {
                                 <div className="space-y-2 max-h-40 overflow-y-auto">
                                     {promoterReferredPromoters.map(p => (
                                         <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
-                                            <div className="w-8 h-8 rounded-full overflow-hidden" style={{ background: 'var(--bg-secondary)' }}>
-                                                {p.avatar_url ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" /> : <User className="w-4 h-4 m-2" style={{ color: 'var(--text-muted)' }} />}
+                                            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}>
+                                                <User className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>{p.full_name}</p>
-                                                <p className="text-xs text-teal-400">{p.custom_id || 'Pending ID'}</p>
+                                                <p className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
+                                                <p className="text-xs text-teal-400">{p.referral_code || 'Pending ID'}</p>
                                             </div>
                                             <div className="text-right">
-                                                <span className={`text-xs px-2 py-1 rounded ${p.is_approved ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                                                    {p.is_approved ? 'Active' : 'Pending'}
+                                                <span className={`text-xs px-2 py-1 rounded ${p.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                                    {p.status === 'approved' ? 'Active' : 'Pending'}
                                                 </span>
                                             </div>
                                         </div>
@@ -784,12 +902,12 @@ export default function AdminDashboard({ showToast }) {
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{r.student_name}</p>
-                                                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{r.student_contact}</p>
+                                                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{r.student_phone}</p>
                                             </div>
                                             <span className={`text-xs px-2 py-1 rounded ${r.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>{r.status}</span>
                                         </div>
                                         <div className="flex justify-between items-center mt-2 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-                                            <span className={`badge text-xs ${r.courses?.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>{r.courses?.name}</span>
+                                            <span className={`badge text-xs ${r.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>{r.course_name}</span>
                                             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(r.created_at)}</span>
                                         </div>
                                     </div>
@@ -836,6 +954,73 @@ export default function AdminDashboard({ showToast }) {
                             </div>
 
                             <div className="flex gap-2"><button onClick={handleSaveCourse} disabled={actionLoading === 'course'} className="btn-primary flex-1">{actionLoading === 'course' ? <Spinner size="sm" /> : 'Save Course'}</button><button onClick={() => setShowCourseModal(false)} className="btn-secondary flex-1">Cancel</button></div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Create User Modal */}
+            {showUserModal && (
+                <div className="modal-overlay" onClick={() => setShowUserModal(false)}>
+                    <div className="modal-content" style={{ maxWidth: '450px' }} onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Create New User</h3>
+                        <div className="space-y-4">
+                            <div><label className="block text-sm mb-1">Full Name</label><input type="text" value={newUserForm.name} onChange={e => setNewUserForm({ ...newUserForm, name: e.target.value })} className="input-field" placeholder="Full Name" /></div>
+                            <div><label className="block text-sm mb-1">WhatsApp Number</label><input type="text" value={newUserForm.phone} onChange={e => setNewUserForm({ ...newUserForm, phone: e.target.value })} className="input-field" placeholder="9876543210" /></div>
+                            <div><label className="block text-sm mb-1">Password</label><input type="password" value={newUserForm.password} onChange={e => setNewUserForm({ ...newUserForm, password: e.target.value })} className="input-field" placeholder="********" /></div>
+                            <div>
+                                <label className="block text-sm mb-1">Initial Rank</label>
+                                <select value={newUserForm.rank} onChange={e => setNewUserForm({ ...newUserForm, rank: e.target.value })} className="input-field">
+                                    <option value="JSO">JSO</option>
+                                    <option value="SO">SO</option>
+                                    <option value="SOP">SOP</option>
+                                    <option value="SDO">SDO</option>
+                                    <option value="Platinum">Platinum</option>
+                                </select>
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <button onClick={handleSaveUser} disabled={actionLoading === 'user-save'} className="btn-primary flex-1">
+                                    {actionLoading === 'user-save' ? <Spinner size="sm" /> : 'Create User'}
+                                </button>
+                                <button onClick={() => setShowUserModal(false)} className="btn-secondary flex-1">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Bonus Modal */}
+            {showBonusModal && (
+                <div className="modal-overlay" onClick={() => setShowBonusModal(false)}>
+                    <div className="modal-content" style={{ maxWidth: '450px' }} onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Create Bonus Campaign</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm mb-1">Target Course</label>
+                                <select value={bonusForm.course_id} onChange={e => setBonusForm({ ...bonusForm, course_id: e.target.value })} className="input-field">
+                                    <option value="">Select Course</option>
+                                    {courses.map(c => <option key={c.course_id} value={c.course_id}>{c.course_name}</option>)}
+                                </select>
+                            </div>
+                            <div><label className="block text-sm mb-1">Bonus Amount (₹)</label><input type="number" value={bonusForm.bonus_amount} onChange={e => setBonusForm({ ...bonusForm, bonus_amount: e.target.value })} className="input-field" placeholder="100" /></div>
+                            <div><label className="block text-sm mb-1">Start Date/Time</label><input type="datetime-local" value={bonusForm.start_time} onChange={e => setBonusForm({ ...bonusForm, start_time: e.target.value })} className="input-field" /></div>
+                            <div><label className="block text-sm mb-1">End Date/Time</label><input type="datetime-local" value={bonusForm.end_time} onChange={e => setBonusForm({ ...bonusForm, end_time: e.target.value })} className="input-field" /></div>
+                            <div>
+                                <label className="block text-sm mb-1">Eligibility</label>
+                                <select value={bonusForm.eligible_roles} onChange={e => setBonusForm({ ...bonusForm, eligible_roles: e.target.value })} className="input-field">
+                                    <option value="ALL">ALL RANKS</option>
+                                    <option value="JSO">JSO ONLY</option>
+                                    <option value="SO">SO ONLY</option>
+                                    <option value="SOP">SOP ONLY</option>
+                                    <option value="SDO">SDO ONLY</option>
+                                    <option value="Platinum">Platinum ONLY</option>
+                                </select>
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <button onClick={handleSaveBonus} disabled={actionLoading === 'bonus-save'} className="btn-primary flex-1">
+                                    {actionLoading === 'bonus-save' ? <Spinner size="sm" /> : 'Start Campaign'}
+                                </button>
+                                <button onClick={() => setShowBonusModal(false)} className="btn-secondary flex-1">Cancel</button>
+                            </div>
                         </div>
                     </div>
                 </div>

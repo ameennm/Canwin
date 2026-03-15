@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import Spinner from '../components/Spinner';
 import ThemeToggle from '../components/ThemeToggle';
 
@@ -16,15 +16,9 @@ export default function PendingPage({ showToast }) {
 
         setChecking(true);
         try {
-            const { data: userData, error } = await supabase
-                .from('public_users')
-                .select('*')
-                .eq('whatsapp_number', user.whatsapp_number)
-                .single();
-
-            if (error) throw error;
-
-            if (userData?.is_approved) {
+            const userData = await api.auth.login(user.whatsapp_number, user.password); // Assuming password is in state/state
+            
+            if (userData && userData.is_approved) {
                 localStorage.setItem('canwin_user', JSON.stringify(userData));
                 showToast('Account approved!');
                 navigate('/dashboard');
@@ -33,7 +27,7 @@ export default function PendingPage({ showToast }) {
             }
         } catch (err) {
             console.error('Error checking status:', err);
-            showToast('Error checking status', 'error');
+            showToast('Still pending approval', 'error');
         } finally {
             setChecking(false);
         }

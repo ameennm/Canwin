@@ -1,4 +1,4 @@
-import { getLevelProgress } from '../lib/supabase';
+import { getLevelProgress } from '../lib/utils';
 
 export default function ProgressBar({ totalPoints, currentLevel }) {
     const { progress, nextLevel, remaining, nextThreshold } = getLevelProgress(totalPoints);

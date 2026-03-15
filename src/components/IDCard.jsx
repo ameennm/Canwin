@@ -188,45 +188,24 @@ export default function IDCard({ user }) {
                     </div>
 
                     {/* Main Content */}
-                    <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
-                        {/* Photo */}
-                        <div
-                            style={{
-                                width: '72px',
-                                height: '72px',
-                                borderRadius: '12px',
-                                overflow: 'hidden',
-                                border: `2px solid ${levelStyle.text}`,
-                                boxShadow: `0 0 20px ${levelStyle.text}30`,
-                                flexShrink: 0,
-                            }}
-                        >
-                            {user.avatar_url ? (
-                                <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} crossOrigin="anonymous" />
-                            ) : (
-                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#334155' }}>
-                                    <User style={{ width: '32px', height: '32px', color: '#64748b' }} />
-                                </div>
-                            )}
-                        </div>
-
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, textAlign: 'center' }}>
                         {/* Info */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '16px', fontWeight: '700', color: '#fff', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ width: '100%', minWidth: 0 }}>
+                            <div style={{ fontSize: '20px', fontWeight: '700', color: '#fff', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {user.full_name}
                             </div>
-                            <div style={{ fontSize: '13px', fontWeight: '700', color: levelStyle.text, fontFamily: 'monospace', marginBottom: '8px', letterSpacing: '1px' }}>
+                            <div style={{ fontSize: '15px', fontWeight: '700', color: levelStyle.text, fontFamily: 'monospace', marginBottom: '12px', letterSpacing: '2px' }}>
                                 {user.custom_id || 'PENDING'}
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Phone style={{ width: '12px', height: '12px', color: '#64748b' }} />
-                                    <span style={{ fontSize: '11px', color: '#cbd5e1' }}>{user.whatsapp_number}</span>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Phone style={{ width: '14px', height: '14px', color: '#64748b' }} />
+                                    <span style={{ fontSize: '13px', color: '#cbd5e1' }}>{user.whatsapp_number}</span>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Calendar style={{ width: '12px', height: '12px', color: '#64748b' }} />
-                                    <span style={{ fontSize: '11px', color: '#cbd5e1' }}>{formatDOB(user.dob)}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Calendar style={{ width: '14px', height: '14px', color: '#64748b' }} />
+                                    <span style={{ fontSize: '13px', color: '#cbd5e1' }}>{formatDOB(user.dob)}</span>
                                 </div>
                             </div>
                         </div>
