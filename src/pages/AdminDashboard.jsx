@@ -50,6 +50,9 @@ export default function AdminDashboard({ showToast }) {
     const [newUserForm, setNewUserForm] = useState({ name: '', phone: '', email: '', password: '', rank: 'JSO' });
     const [showBonusModal, setShowBonusModal] = useState(false);
     const [bonusForm, setBonusForm] = useState({ course_id: '', bonus_amount: 0, start_time: '', end_time: '', eligible_roles: 'ALL' });
+    const [specialOffers, setSpecialOffers] = useState([]);
+    const [showOfferModal, setShowOfferModal] = useState(false);
+    const [offerForm, setOfferForm] = useState({ course_id: '', valid_until: '', jso_amount: 0, so_amount: 0, sop_amount: 0, sdo_amount: 0, platinum_amount: 0 });
 
     const getMonthName = (monthIndex) => {
         return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][monthIndex];
@@ -65,13 +68,14 @@ export default function AdminDashboard({ showToast }) {
         setLoading(true);
         try {
             const [
-                courseData, 
-                statsData, 
-                promoterData, 
-                studentData, 
+                courseData,
+                statsData,
+                promoterData,
+                studentData,
                 referralData,
                 withdrawalsData,
-                bonusesData
+                bonusesData,
+                offersData
             ] = await Promise.all([
                 api.courses.list(),
                 api.admin.getStats(),
@@ -79,7 +83,8 @@ export default function AdminDashboard({ showToast }) {
                 api.admin.getStudents(),
                 api.admin.getReferrals(),
                 api.admin.getWithdrawals(),
-                api.bonuses.list()
+                api.bonuses.list(),
+                api.admin.offers.list()
             ]);
 
             setCourses(courseData || []);
@@ -90,6 +95,7 @@ export default function AdminDashboard({ showToast }) {
             setPendingReferrals((referralData || []).filter(r => r.status === 'pending'));
             setWithdrawals(withdrawalsData || []);
             setBonuses(bonusesData || []);
+            setSpecialOffers(offersData || []);
 
             fetchMonthlyData();
         } catch (err) {
@@ -218,6 +224,36 @@ export default function AdminDashboard({ showToast }) {
         }
     };
 
+    const handleSaveOffer = async () => {
+        if (!offerForm.course_id || !offerForm.valid_until) {
+            showToast('Please select a course and set validity', 'error');
+            return;
+        }
+        setActionLoading('offer-save');
+        try {
+            await api.admin.offers.create(offerForm);
+            showToast('Special offer created!');
+            setShowOfferModal(false);
+            setOfferForm({ course_id: '', valid_until: '', jso_amount: 0, so_amount: 0, sop_amount: 0, sdo_amount: 0, platinum_amount: 0 });
+            fetchData();
+        } catch (err) {
+            showToast(err.message || 'Failed to create offer', 'error');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleDeleteOffer = async (id) => {
+        if (!confirm('Cancel this offer?')) return;
+        setActionLoading(`del-offer-${id}`);
+        try {
+            await api.admin.offers.delete(id);
+            showToast('Offer cancelled');
+            fetchData();
+        } catch (err) { showToast('Failed to cancel offer', 'error'); }
+        finally { setActionLoading(null); }
+    };
+
     const handleVerifyReferral = async (referralId) => {
         setActionLoading(referralId);
         try {
@@ -259,7 +295,7 @@ export default function AdminDashboard({ showToast }) {
     };
 
     const handleSaveCourse = async () => {
-        if (!courseForm.name || !courseForm.price) {
+        if (!courseForm.name) {
             showToast('Please fill all required fields', 'error');
             return;
         }
@@ -268,7 +304,17 @@ export default function AdminDashboard({ showToast }) {
             const courseData = {
                 course_name: courseForm.name,
                 price: parseFloat(courseForm.price) || 0,
-                points: parseFloat(courseForm.points) || undefined // Server sets default if undefined
+                points: parseFloat(courseForm.points) || undefined,
+                commission_pool_percentage: 30,
+                admission_start_date: courseForm.admission_start_date || null,
+                admission_end_date: courseForm.admission_end_date || null,
+                course_start_date: courseForm.course_start_date || null,
+                comm_jso: parseFloat(courseForm.comm_jso) || 0,
+                comm_so: parseFloat(courseForm.comm_so) || 0,
+                comm_sop: parseFloat(courseForm.comm_sop) || 0,
+                comm_sdo: parseFloat(courseForm.comm_sdo) || 0,
+                comm_platinum: parseFloat(courseForm.comm_platinum) || 0,
+                status: courseForm.is_active ? 'active' : 'inactive'
             };
             if (editingCourse) {
                 await api.courses.update(editingCourse.id, courseData);
@@ -278,7 +324,7 @@ export default function AdminDashboard({ showToast }) {
             showToast('Course saved!');
             setShowCourseModal(false);
             setEditingCourse(null);
-            setCourseForm({ name: '', description: '', course_type: 'paid', points: 10, price: 0, is_active: true });
+            setCourseForm({ name: '', description: '', course_type: 'free', points: 10, price: 0, is_active: true, admission_start_date: '', admission_end_date: '', course_start_date: '', comm_jso: 0, comm_so: 0, comm_sop: 0, comm_sdo: 0, comm_platinum: 0 });
             fetchData();
         } catch (err) { showToast('Failed to save course', 'error'); }
         finally { setActionLoading(null); }
@@ -626,29 +672,73 @@ export default function AdminDashboard({ showToast }) {
                 {/* Courses Tab */}
                 {activeTab === 'courses' && (
                     <div className="space-y-4">
-                        <button onClick={() => { setEditingCourse(null); setCourseForm({ name: '', description: '', course_type: 'free', points: 10, promoter_referral_points: 50, second_level_points: 5, price: 0, is_active: true }); setShowCourseModal(true); }} className="btn-primary flex items-center gap-2"><Plus className="w-5 h-5" />Add Course</button>
+                        <button onClick={() => { setEditingCourse(null); setCourseForm({ name: '', description: '', course_type: 'free', points: 10, price: 0, is_active: true, admission_start_date: '', admission_end_date: '', course_start_date: '', comm_jso: 0, comm_so: 0, comm_sop: 0, comm_sdo: 0, comm_platinum: 0 }); setShowCourseModal(true); }} className="btn-primary flex items-center gap-2"><Plus className="w-5 h-5" />Add Course</button>
                         <div className="cards-grid">
                             {courses.map(c => (
                                 <div key={c.id} className="card">
                                     <div className="flex justify-between items-start mb-2"><h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{c.name}</h4><span className={`badge text-xs ${c.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>{c.course_type === 'paid' ? `₹${c.price}` : 'Free'}</span></div>
-                                    <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{c.description || 'No description'}</p>
+                                    <p className="text-sm mb-2 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{c.description || 'No description'}</p>
+                                    {c.course_start_date && <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}><Clock className="w-3 h-3 inline mr-1" />Starts: {formatDate(c.course_start_date)}</p>}
                                     <div className="space-y-1 mb-3 text-xs" style={{ color: 'var(--text-muted)' }}>
                                         <p>Student Referral: <span className="text-teal-400 font-semibold">+{c.points} pts</span></p>
-                                        <p>Promoter Referral: <span className="text-purple-400 font-semibold">+{c.promoter_referral_points || 0} pts</span></p>
+                                        {(c.comm_jso > 0 || c.comm_so > 0 || c.comm_sop > 0 || c.comm_sdo > 0 || c.comm_platinum > 0) && (
+                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                {c.comm_jso > 0 && <span className="text-amber-400 bg-amber-500/10 px-1 rounded">JSO:₹{c.comm_jso}</span>}
+                                                {c.comm_so > 0 && <span className="text-amber-400 bg-amber-500/10 px-1 rounded">SO:₹{c.comm_so}</span>}
+                                                {c.comm_sop > 0 && <span className="text-amber-400 bg-amber-500/10 px-1 rounded">SOP:₹{c.comm_sop}</span>}
+                                                {c.comm_sdo > 0 && <span className="text-amber-400 bg-amber-500/10 px-1 rounded">SDO:₹{c.comm_sdo}</span>}
+                                                {c.comm_platinum > 0 && <span className="text-amber-400 bg-amber-500/10 px-1 rounded">PL:₹{c.comm_platinum}</span>}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className={`text-xs ${c.status === 'active' ? 'text-green-400' : 'text-red-400'}`}>{c.status === 'active' ? 'Active' : 'Inactive'}</span>
+                                        <span className={`text-xs ${c.status === 'active' ? 'text-green-400' : 'text-red-400'}`}>{c.status === 'active' ? 'Active' : c.schedule_status === 'closed' ? 'Closed' : 'Inactive'}</span>
                                         <div className="flex gap-2 items-center">
-                                            <button onClick={() => { setEditingCourse(c); setCourseForm({ name: c.name, description: c.description || '', course_type: c.course_type, points: c.points || 10, promoter_referral_points: c.promoter_referral_points || 50, price: c.price || 0, is_active: c.status === 'active' }); setShowCourseModal(true); }} style={{ color: 'var(--text-secondary)' }}><Edit2 className="w-4 h-4" /></button>
+                                            <button onClick={() => { setEditingCourse(c); setCourseForm({ name: c.name, description: c.description || '', course_type: c.course_type, points: c.points || 10, price: c.price || 0, is_active: c.status === 'active', admission_start_date: c.admission_start_date || '', admission_end_date: c.admission_end_date || '', course_start_date: c.course_start_date || '', comm_jso: c.comm_jso || 0, comm_so: c.comm_so || 0, comm_sop: c.comm_sop || 0, comm_sdo: c.comm_sdo || 0, comm_platinum: c.comm_platinum || 0 }); setShowCourseModal(true); }} style={{ color: 'var(--text-secondary)' }}><Edit2 className="w-4 h-4" /></button>
                                             <button onClick={() => handleDeleteCourse(c.id, c.name)} disabled={actionLoading === `del-c-${c.id}`} style={{ color: 'var(--text-secondary)' }}>{actionLoading === `del-c-${c.id}` ? <Spinner size="sm" /> : <Trash2 className="w-4 h-4" />}</button>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
+
+                        {/* Special Offers Sub-section */}
+                        <div className="mt-6">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                    <Zap className="w-5 h-5 text-amber-400" /> Special Offers
+                                </h3>
+                                <button onClick={() => setShowOfferModal(true)} className="btn-primary py-1.5 px-3 text-sm flex items-center gap-1">
+                                    <Plus className="w-4 h-4" /> Create Offer
+                                </button>
+                            </div>
+                            {specialOffers.length === 0 ? (
+                                <div className="card text-center py-6"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>No special offers created yet</p></div>
+                            ) : (
+                                <div className="table-container card p-0 overflow-hidden">
+                                    <table className="data-table text-sm">
+                                        <thead><tr><th>Course</th><th>Valid Until</th><th>JSO</th><th>SO</th><th>SOP</th><th>SDO</th><th>Platinum</th><th>Status</th><th></th></tr></thead>
+                                        <tbody>
+                                            {specialOffers.map(o => (
+                                                <tr key={o.offer_id}>
+                                                    <td className="font-medium">{o.course_name}</td>
+                                                    <td>{formatDate(o.valid_until)}</td>
+                                                    <td className="text-amber-400">Rs.{o.jso_amount}</td>
+                                                    <td className="text-amber-400">Rs.{o.so_amount}</td>
+                                                    <td className="text-amber-400">Rs.{o.sop_amount}</td>
+                                                    <td className="text-amber-400">Rs.{o.sdo_amount}</td>
+                                                    <td className="text-amber-400">Rs.{o.platinum_amount}</td>
+                                                    <td><span className={`text-xs px-2 py-1 rounded ${o.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{o.isActive ? 'Active' : 'Inactive'}</span></td>
+                                                    <td><button onClick={() => handleDeleteOffer(o.offer_id)} disabled={actionLoading === `del-offer-${o.offer_id}`} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
-            </main>
 
                 {/* Bonuses Tab */}
                 {activeTab === 'bonuses' && (
@@ -760,9 +850,10 @@ export default function AdminDashboard({ showToast }) {
                         </div>
                     </div>
                 )}
+            </main>
 
-                {/* Student Details Modal */}
-                {selectedStudent && (
+            {/* Student Details Modal */}
+            {selectedStudent && (
                 <div className="modal-overlay" onClick={() => setSelectedStudent(null)}>
                     <div className="modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4">
@@ -921,30 +1012,59 @@ export default function AdminDashboard({ showToast }) {
             {/* Course Modal */}
             {showCourseModal && (
                 <div className="modal-overlay" onClick={() => setShowCourseModal(false)}>
-                    <div className="modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
+                    <div className="modal-content" style={{ maxWidth: '560px' }} onClick={e => e.stopPropagation()}>
                         <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>{editingCourse ? 'Edit Course' : 'Add Course'}</h3>
                         <div className="space-y-4">
                             <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Course Name</label><input type="text" value={courseForm.name} onChange={e => setCourseForm({ ...courseForm, name: e.target.value })} className="input-field" placeholder="Enter course name" /></div>
                             <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Description</label><textarea value={courseForm.description} onChange={e => setCourseForm({ ...courseForm, description: e.target.value })} className="input-field" rows={2} placeholder="Course description" /></div>
-                            <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Course Type</label><select value={courseForm.course_type} onChange={e => setCourseForm({ ...courseForm, course_type: e.target.value })} className="input-field"><option value="free">Free</option><option value="paid">Paid</option></select></div>
-                            {courseForm.course_type === 'paid' && <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Price (₹)</label><input type="number" value={courseForm.price} onChange={e => setCourseForm({ ...courseForm, price: e.target.value })} className="input-field" placeholder="0" /></div>}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Course Type</label><select value={courseForm.course_type} onChange={e => setCourseForm({ ...courseForm, course_type: e.target.value })} className="input-field"><option value="free">Free</option><option value="paid">Paid</option></select></div>
+                                {courseForm.course_type === 'paid' && <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Price (₹)</label><input type="number" value={courseForm.price} onChange={e => setCourseForm({ ...courseForm, price: e.target.value })} className="input-field" placeholder="0" /></div>}
+                                {!editingCourse && courseForm.course_type === 'free' && <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Price (₹)</label><input type="number" value="0" disabled className="input-field opacity-50" /></div>}
+                            </div>
 
+                            {/* Schedule Section */}
+                            <div className="p-4 rounded-xl" style={{ background: 'var(--hover-bg)' }}>
+                                <h4 className="font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                    <Clock className="w-4 h-4 text-blue-400" />
+                                    Course Schedule
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Admission Start</label><input type="datetime-local" value={courseForm.admission_start_date} onChange={e => setCourseForm({ ...courseForm, admission_start_date: e.target.value })} className="input-field" /></div>
+                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Admission End</label><input type="datetime-local" value={courseForm.admission_end_date} onChange={e => setCourseForm({ ...courseForm, admission_end_date: e.target.value })} className="input-field" /></div>
+                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Course Start</label><input type="datetime-local" value={courseForm.course_start_date} onChange={e => setCourseForm({ ...courseForm, course_start_date: e.target.value })} className="input-field" /></div>
+                                </div>
+                            </div>
+
+                            {/* Points + Rank Commission Section */}
                             <div className="p-4 rounded-xl" style={{ background: 'var(--hover-bg)' }}>
                                 <h4 className="font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                                     <Zap className="w-4 h-4 text-amber-400" />
-                                    Points Configuration
+                                    Points
                                 </h4>
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Student Referral Points</label>
-                                        <input type="number" step="0.01" value={courseForm.points} onChange={e => setCourseForm({ ...courseForm, points: e.target.value })} className="input-field" placeholder="10.5" />
-                                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Points earned when a promoter refers a student to this course (decimals allowed)</p>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Promoter Referral Points</label>
-                                        <input type="number" step="0.01" value={courseForm.promoter_referral_points} onChange={e => setCourseForm({ ...courseForm, promoter_referral_points: e.target.value })} className="input-field" placeholder="50.5" />
-                                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Points when a promoter refers another promoter (decimals allowed)</p>
-                                    </div>
+                                <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Student Referral Points</label><input type="number" step="0.01" value={courseForm.points} onChange={e => setCourseForm({ ...courseForm, points: e.target.value })} className="input-field" /></div>
+                            </div>
+
+                            {/* Rank-Based Commission */}
+                            <div className="p-4 rounded-xl" style={{ background: 'var(--hover-bg)' }}>
+                                <h4 className="font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                    <DollarSign className="w-4 h-4 text-green-400" />
+                                    Rank-Based Commission (INR per admission)
+                                </h4>
+                                <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Set the commission earned by the DIRECT REFER only. Upline chain splits this amount.</p>
+                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                                    {[
+                                        { label: 'JSO', key: 'comm_jso' },
+                                        { label: 'SO', key: 'comm_so' },
+                                        { label: 'SOP', key: 'comm_sop' },
+                                        { label: 'SDO', key: 'comm_sdo' },
+                                        { label: 'Platinum', key: 'comm_platinum' },
+                                    ].map(({ label, key }) => (
+                                        <div key={key}>
+                                            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</label>
+                                            <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: 'var(--text-muted)' }}>Rs</span><input type="number" step="1" min="0" value={courseForm[key]} onChange={e => setCourseForm({ ...courseForm, [key]: e.target.value })} className="input-field pl-8" placeholder="0" /></div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
@@ -966,7 +1086,9 @@ export default function AdminDashboard({ showToast }) {
                         <div className="space-y-4">
                             <div><label className="block text-sm mb-1">Full Name</label><input type="text" value={newUserForm.name} onChange={e => setNewUserForm({ ...newUserForm, name: e.target.value })} className="input-field" placeholder="Full Name" /></div>
                             <div><label className="block text-sm mb-1">WhatsApp Number</label><input type="text" value={newUserForm.phone} onChange={e => setNewUserForm({ ...newUserForm, phone: e.target.value })} className="input-field" placeholder="9876543210" /></div>
+                            <div><label className="block text-sm mb-1">Email</label><input type="email" value={newUserForm.email} onChange={e => setNewUserForm({ ...newUserForm, email: e.target.value })} className="input-field" placeholder="email@example.com" /></div>
                             <div><label className="block text-sm mb-1">Password</label><input type="password" value={newUserForm.password} onChange={e => setNewUserForm({ ...newUserForm, password: e.target.value })} className="input-field" placeholder="********" /></div>
+                            <div><label className="block text-sm mb-1">Upline Referral Code (Optional)</label><input type="text" value={newUserForm.upline_referral_code} onChange={e => setNewUserForm({ ...newUserForm, upline_referral_code: e.target.value })} className="input-field" placeholder="e.g. JSO1005" /></div>
                             <div>
                                 <label className="block text-sm mb-1">Initial Rank</label>
                                 <select value={newUserForm.rank} onChange={e => setNewUserForm({ ...newUserForm, rank: e.target.value })} className="input-field">
@@ -1020,6 +1142,53 @@ export default function AdminDashboard({ showToast }) {
                                     {actionLoading === 'bonus-save' ? <Spinner size="sm" /> : 'Start Campaign'}
                                 </button>
                                 <button onClick={() => setShowBonusModal(false)} className="btn-secondary flex-1">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Special Offer Modal */}
+            {showOfferModal && (
+                <div className="modal-overlay" onClick={() => setShowOfferModal(false)}>
+                    <div className="modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Create Special Offer</h3>
+                        <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>This amount is ADDED to the base rank commission. It only applies to admissions created during the offer period.</p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm mb-1">Target Course</label>
+                                <select value={offerForm.course_id} onChange={e => setOfferForm({ ...offerForm, course_id: e.target.value })} className="input-field">
+                                    <option value="">Select Course</option>
+                                    {courses.map(c => <option key={c.id || c.course_id} value={c.id || c.course_id}>{c.name || c.course_name}</option>)}
+                                </select>
+                            </div>
+                            <div><label className="block text-sm mb-1">Valid Until</label><input type="datetime-local" value={offerForm.valid_until} onChange={e => setOfferForm({ ...offerForm, valid_until: e.target.value })} className="input-field" /></div>
+                            
+                            <div className="p-4 rounded-xl" style={{ background: 'var(--hover-bg)' }}>
+                                <h4 className="font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                    <Zap className="w-4 h-4 text-amber-400" />
+                                    Bonus Amount Per Rank (Added on top of base)
+                                </h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { label: 'JSO', key: 'jso_amount' },
+                                        { label: 'SO', key: 'so_amount' },
+                                        { label: 'SOP', key: 'sop_amount' },
+                                        { label: 'SDO', key: 'sdo_amount' },
+                                        { label: 'Platinum', key: 'platinum_amount' },
+                                    ].map(({ label, key }) => (
+                                        <div key={key}>
+                                            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label} Bonus</label>
+                                            <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: 'var(--text-muted)' }}>Rs</span><input type="number" step="1" min="0" value={offerForm[key]} onChange={e => setOfferForm({ ...offerForm, [key]: e.target.value })} className="input-field pl-8" placeholder="0" /></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <button onClick={handleSaveOffer} disabled={actionLoading === 'offer-save'} className="btn-primary flex-1">
+                                    {actionLoading === 'offer-save' ? <Spinner size="sm" /> : 'Create Offer'}
+                                </button>
+                                <button onClick={() => setShowOfferModal(false)} className="btn-secondary flex-1">Cancel</button>
                             </div>
                         </div>
                     </div>

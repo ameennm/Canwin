@@ -67,6 +67,15 @@ export const api = {
     admissions: {
         approve: (admissionId) => request(`/admin/admissions/approve`, { method: 'POST', body: JSON.stringify({ admissionId }) }),
         reject: (admissionId) => request(`/admin/admissions/reject`, { method: 'POST', body: JSON.stringify({ admissionId }) })
+    },
+    users: {
+      create: (data) => request('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
+    },
+    offers: {
+      list: () => request('/admin/offers'),
+      create: (data) => request('/admin/offers', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id, data) => request(`/admin/offers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id) => request(`/admin/offers/${id}`, { method: 'DELETE' }),
     }
   }
 };
