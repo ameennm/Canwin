@@ -43,3 +43,8 @@ coverage/
 # Cache
 .cache/
 .eslintcache
+
+# Cloudflare Wrangler
+.wrangler/
+local-db-test/
+.dev.vars

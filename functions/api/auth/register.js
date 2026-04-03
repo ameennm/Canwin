@@ -1,11 +1,40 @@
+async function hashPassword(password) {
+  const msgUint8 = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export async function onRequestPost({ request, env }) {
   const { name, phone, email, password, referral_code, rank: requestedRank } = await request.json();
   const db = env.DB;
 
   try {
+    // Validate required fields
+    if (!name || !phone || !email || !password) {
+      return new Response(JSON.stringify({ error: 'Missing required fields: name, phone, email, password' }), { status: 400 });
+    }
+
+    // Hash the password
+    const hashedPassword = await hashPassword(password);
+
+    // Normalize rank name to abbreviation
+    const rankMap = {
+      'Junior Sales Officer': 'JSO',
+      'Sales Officer': 'SO',
+      'Sales Officer Premium': 'SOP',
+      'Senior Development Officer': 'SDO',
+      'Platinum Leader': 'Platinum',
+      'JSO': 'JSO',
+      'SO': 'SO',
+      'SOP': 'SOP',
+      'SDO': 'SDO',
+      'Platinum': 'Platinum',
+    };
+    const rank = rankMap[requestedRank] || 'JSO';
+
     let upline = null;
     let uplineChain = [];
-    const rank = requestedRank || 'Junior Sales Officer';
 
     // 1. Validate referral code (find upline)
     if (referral_code && referral_code !== 'ADMIN') {
@@ -19,12 +48,12 @@ export async function onRequestPost({ request, env }) {
 
       // 2. Enforce Recruitment Rules
       const canRecruit = {
-        'Junior Sales Officer': [],
-        'Sales Officer': ['Junior Sales Officer'],
-        'Sales Officer Premium': ['Sales Officer', 'Junior Sales Officer'],
-        'Senior Development Officer': ['Sales Officer Premium', 'Sales Officer', 'Junior Sales Officer'],
-        'Platinum Leader': ['Platinum Leader', 'Senior Development Officer', 'Sales Officer Premium', 'Sales Officer', 'Junior Sales Officer'],
-        'Super Admin': ['Platinum Leader', 'Senior Development Officer', 'Sales Officer Premium', 'Sales Officer', 'Junior Sales Officer']
+        'JSO': [],
+        'SO': ['JSO'],
+        'SOP': ['SO', 'JSO'],
+        'SDO': ['SOP', 'SO', 'JSO'],
+        'Platinum': ['SDO', 'SOP', 'SO', 'JSO'],
+        'Super Admin': ['SDO', 'SOP', 'SO', 'JSO'],
       };
 
       if (!canRecruit[upline.rank] || !canRecruit[upline.rank].includes(rank)) {
@@ -48,22 +77,16 @@ export async function onRequestPost({ request, env }) {
          return new Response(JSON.stringify({ error: 'Referral code is mandatory' }), { status: 400 });
     }
 
-    // 4. Generate unique referral code
+    // 4. Generate unique referral code (Unified CNWN ID)
     const countResult = await db.prepare('SELECT COUNT(*) as count FROM users').first();
     const nextId = (countResult.count || 0) + 1001;
-    let rankPrefix = 'JSO';
-    if (rank === 'Sales Officer') rankPrefix = 'SO';
-    else if (rank === 'Sales Officer Premium') rankPrefix = 'SOP';
-    else if (rank === 'Senior Development Officer') rankPrefix = 'SDO';
-    else if (rank === 'Platinum Leader') rankPrefix = 'PL';
-    
-    const newReferralCode = `${rankPrefix}${nextId}`;
+    const newReferralCode = `CNWN${nextId}`;
 
     // 5. Create user (always pending initially)
     await db.prepare(`
       INSERT INTO users (name, phone, email, password_hash, rank, referral_code, upline_id, upline_chain, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(name, phone, email, password, rank, newReferralCode, upline?.id || null, JSON.stringify(uplineChain), 'pending')
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+    `).bind(name, phone, email, hashedPassword, rank, newReferralCode, upline?.id || null, JSON.stringify(uplineChain))
       .run();
 
     return new Response(JSON.stringify({ message: 'User registered successfully', referral_code: newReferralCode }), {

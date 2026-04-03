@@ -4,8 +4,10 @@ export async function onRequest(context) {
   const { request, env } = context;
   const { pathname } = new URL(request.url);
 
-  // Skip auth for login and register
-  if (pathname.startsWith('/api/auth/login') || pathname.startsWith('/api/auth/register')) {
+  // Skip auth for login, register, and test-db
+  if (pathname.startsWith('/api/auth/login') || 
+      pathname.startsWith('/api/auth/register') || 
+      pathname.startsWith('/api/test-db')) {
     return await context.next();
   }
 

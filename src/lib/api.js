@@ -54,7 +54,7 @@ export const api = {
   },
   admin: {
     getStats: () => request('/admin/stats'),
-    getPromoters: () => request('/admin/promoters'), // Assuming this maps to an updated /admin/promoters endpoint
+    getPromoters: () => request('/admin/promoters'), 
     getStudents: () => request('/admin/students'),
     getReferrals: () => request('/admin/referrals'),
     approveUser: (userId) => request(`/admin/approve/${userId}`, { method: 'POST' }),
@@ -68,7 +68,15 @@ export const api = {
     admissions: {
         approve: (admission_id) => request(`/admin/admissions/approve`, { method: 'POST', body: JSON.stringify({ admission_id }) }),
         reject: (admission_id) => request(`/admin/admissions/reject`, { method: 'POST', body: JSON.stringify({ admission_id }) })
+    },
+    users: {
+      create: (data) => request('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
+    },
+    offers: {
+      list: () => request('/admin/offers'),
+      create: (data) => request('/admin/offers', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id, data) => request(`/admin/offers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id) => request(`/admin/offers/${id}`, { method: 'DELETE' }),
     }
   }
 };
-

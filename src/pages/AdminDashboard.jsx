@@ -51,12 +51,14 @@ export default function AdminDashboard({ showToast }) {
     const [newUserForm, setNewUserForm] = useState({ name: '', phone: '', email: '', password: '', rank: 'JSO' });
     const [showBonusModal, setShowBonusModal] = useState(false);
     const [bonusForm, setBonusForm] = useState({ course_id: '', bonus_amount: 0, start_time: '', end_time: '', eligible_roles: 'ALL' });
-    
     // New Edit States
     const [showEditUserModal, setShowEditUserModal] = useState(false);
     const [editUserForm, setEditUserForm] = useState({ id: '', name: '', phone: '', email: '', rank: '', status: '', password: '' });
     const [showEditAdmissionModal, setShowEditAdmissionModal] = useState(false);
     const [editAdmissionForm, setEditAdmissionForm] = useState({ id: '', student_name: '', student_phone: '', course_id: '' });
+    const [specialOffers, setSpecialOffers] = useState([]);
+    const [showOfferModal, setShowOfferModal] = useState(false);
+    const [offerForm, setOfferForm] = useState({ course_id: '', valid_until: '', jso_amount: 0, so_amount: 0, sop_amount: 0, sdo_amount: 0, platinum_amount: 0 });
 
     const getMonthName = (monthIndex) => {
         return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][monthIndex];
@@ -72,13 +74,14 @@ export default function AdminDashboard({ showToast }) {
         setLoading(true);
         try {
             const [
-                courseData, 
-                statsData, 
-                promoterData, 
-                studentData, 
+                courseData,
+                statsData,
+                promoterData,
+                studentData,
                 referralData,
                 withdrawalsData,
-                bonusesData
+                bonusesData,
+                offersData
             ] = await Promise.all([
                 api.courses.list(),
                 api.admin.getStats(),
@@ -86,7 +89,8 @@ export default function AdminDashboard({ showToast }) {
                 api.admin.getStudents(),
                 api.admin.getReferrals(),
                 api.admin.getWithdrawals(),
-                api.bonuses.list()
+                api.bonuses.list(),
+                api.admin.offers.list()
             ]);
 
             setCourses(courseData || []);
@@ -97,6 +101,7 @@ export default function AdminDashboard({ showToast }) {
             setPendingReferrals((referralData || []).filter(r => r.status === 'pending'));
             setWithdrawals(withdrawalsData || []);
             setBonuses(bonusesData || []);
+            setSpecialOffers(offersData || []);
 
             fetchMonthlyData();
         } catch (err) {
@@ -293,14 +298,45 @@ export default function AdminDashboard({ showToast }) {
         }
     };
 
+    const handleSaveOffer = async () => {
+        if (!offerForm.course_id || !offerForm.valid_until) {
+            showToast('Please select a course and set validity', 'error');
+            return;
+        }
+        setActionLoading('offer-save');
+        try {
+            await api.admin.offers.create(offerForm);
+            showToast('Special offer created!');
+            setShowOfferModal(false);
+            setOfferForm({ course_id: '', valid_until: '', jso_amount: 0, so_amount: 0, sop_amount: 0, sdo_amount: 0, platinum_amount: 0 });
+            fetchData();
+        } catch (err) {
+            showToast(err.message || 'Failed to create offer', 'error');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleDeleteOffer = async (id) => {
+        if (!confirm('Cancel this offer?')) return;
+        setActionLoading(`del-offer-${id}`);
+        try {
+            await api.admin.offers.delete(id);
+            showToast('Offer cancelled');
+            fetchData();
+        } catch (err) { showToast('Failed to cancel offer', 'error'); }
+        finally { setActionLoading(null); }
+    };
+
     const handleVerifyReferral = async (referralId) => {
         setActionLoading(referralId);
         try {
-            await api.admin.admissions.approve(referralId);
-            showToast('Admission approved and commissions distributed!');
-            fetchData();
+            const res = await api.admin.admissions.approve(referralId);
+            showToast(`Admission ${referralId} verified successfully!`);
+            // Immediate re-fetch for all tabs to sync state
+            await fetchData();
         } catch (err) { 
-            showToast(err.message || 'Failed to approve', 'error'); 
+            showToast(err.message || 'Failed to verify', 'error'); 
         }
         finally { setActionLoading(null); }
     };
@@ -318,7 +354,7 @@ export default function AdminDashboard({ showToast }) {
     };
 
     const handleSaveCourse = async () => {
-        if (!courseForm.name || !courseForm.price) {
+        if (!courseForm.name) {
             showToast('Please fill all required fields', 'error');
             return;
         }
@@ -332,7 +368,17 @@ export default function AdminDashboard({ showToast }) {
                 level_2_payout: parseFloat(courseForm.level_2_payout) || 0,
                 level_3_payout: parseFloat(courseForm.level_3_payout) || 0,
                 level_4_payout: parseFloat(courseForm.level_4_payout) || 0,
-                level_5_payout: parseFloat(courseForm.level_5_payout) || 0
+                level_5_payout: parseFloat(courseForm.level_5_payout) || 0,
+                commission_pool_percentage: 30,
+                admission_start_date: courseForm.admission_start_date || null,
+                admission_end_date: courseForm.admission_end_date || null,
+                course_start_date: courseForm.course_start_date || null,
+                comm_jso: parseFloat(courseForm.comm_jso) || 0,
+                comm_so: parseFloat(courseForm.comm_so) || 0,
+                comm_sop: parseFloat(courseForm.comm_sop) || 0,
+                comm_sdo: parseFloat(courseForm.comm_sdo) || 0,
+                comm_platinum: parseFloat(courseForm.comm_platinum) || 0,
+                status: courseForm.is_active ? 'active' : 'inactive'
             };
             if (editingCourse) {
                 await api.courses.update(editingCourse.id, courseData);
@@ -342,7 +388,12 @@ export default function AdminDashboard({ showToast }) {
             showToast('Course saved!');
             setShowCourseModal(false);
             setEditingCourse(null);
-            setCourseForm({ name: '', description: '', course_type: 'paid', points: 10, level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0, price: 0, is_active: true });
+            setCourseForm({ 
+                name: '', description: '', course_type: 'paid', points: 10, 
+                level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0, 
+                price: 0, is_active: true, admission_start_date: '', admission_end_date: '', 
+                course_start_date: '', comm_jso: 0, comm_so: 0, comm_sop: 0, comm_sdo: 0, comm_platinum: 0 
+            });
             fetchData();
         } catch (err) { showToast('Failed to save course', 'error'); }
         finally { setActionLoading(null); }
@@ -532,8 +583,8 @@ export default function AdminDashboard({ showToast }) {
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{course.name}</p>
                                                 <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className={`text-xs px-1.5 py-0.5 rounded ${course.course_type === 'paid' ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400'}`}>
-                                                        {course.course_type === 'paid' ? `₹${course.price}` : 'Free'}
+                                                    <span className={`text-xs px-1.5 py-0.5 rounded ${course.price > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400'}`}>
+                                                        {course.price > 0 ? `₹${course.price}` : 'Free'}
                                                     </span>
                                                 </div>
                                             </div>
@@ -629,7 +680,7 @@ export default function AdminDashboard({ showToast }) {
                                         <div className="space-y-2 mb-3">
                                             <div className="flex justify-between items-center">
                                                 <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Course</span>
-                                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${s.course_type === 'paid' ? 'bg-amber-500/10 text-amber-400' : 'bg-green-500/10 text-green-400'}`}>
+                                                <span className="text-xs px-2 py-0.5 rounded font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
                                                     {s.course_name}
                                                 </span>
                                             </div>
@@ -698,7 +749,7 @@ export default function AdminDashboard({ showToast }) {
                                     <div key={ref.id} className="card">
                                         <div className="flex justify-between items-start mb-2">
                                             <div><p className="font-medium" style={{ color: 'var(--text-primary)' }}>{ref.admitted_by_name}</p><p className="text-xs text-teal-400">Admission by level ID: {ref.admitted_by_user_id}</p></div>
-                                            <span className={`badge text-xs ${ref.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>Pending</span>
+                                            <span className="badge text-xs bg-amber-500/20 text-amber-400">Pending</span>
                                         </div>
                                         <div className="rounded-lg p-2 mt-2 text-sm" style={{ background: 'var(--hover-bg)' }}>
                                             <p style={{ color: 'var(--text-primary)' }}>{ref.student_name}</p>
@@ -716,24 +767,39 @@ export default function AdminDashboard({ showToast }) {
                 {/* Courses Tab */}
                 {activeTab === 'courses' && (
                     <div className="space-y-4">
-                        <button onClick={() => { setEditingCourse(null); setCourseForm({ name: '', description: '', course_type: 'paid', points: 10, level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0, price: 0, is_active: true }); setShowCourseModal(true); }} className="btn-primary flex items-center gap-2"><Plus className="w-5 h-5" />Add Course</button>
+                        <button onClick={() => { setEditingCourse(null); setCourseForm({ name: '', description: '', points: 10, level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0, price: 0, is_active: true, admission_start_date: '', admission_end_date: '', course_start_date: '', comm_jso: 0, comm_so: 0, comm_sop: 0, comm_sdo: 0, comm_platinum: 0 }); setShowCourseModal(true); }} className="btn-primary flex items-center gap-2"><Plus className="w-5 h-5" />Add Course</button>
                         <div className="cards-grid">
                             {courses.map(c => (
                                 <div key={c.id} className="card hover:border-teal-500/30 transition-all">
                                     <div className="flex justify-between items-start mb-2">
                                         <h4 className="font-semibold text-lg" style={{ color: 'var(--text-primary)' }}>{c.name}</h4>
-                                        <span className={`badge text-xs ${c.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>
-                                            {c.course_type === 'paid' ? `₹${c.price}` : 'Free'}
+                                        <span className={`badge text-xs ${c.price > 0 ? 'badge-paid' : 'badge-free'}`}>
+                                            {c.price > 0 ? `₹${c.price}` : 'Free'}
                                         </span>
                                     </div>
                                     <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{c.description || 'No description'}</p>
+                                    
+                                    {c.course_start_date && (
+                                        <p className="text-xs mb-3 flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                                            <Clock className="w-3 h-3" /> Starts: {formatDate(c.course_start_date)}
+                                        </p>
+                                    )}
+
                                     <div className="grid grid-cols-2 gap-2 mb-3 p-2 rounded-lg text-xs" style={{ background: 'var(--hover-bg)' }}>
-                                        <div><span style={{ color: 'var(--text-muted)' }}>L1 Payout:</span> <span className="text-green-400 font-bold ml-1">₹{c.level_1_payout}</span></div>
+                                        <div><span style={{ color: 'var(--text-muted)' }}>L1 Payout:</span> <span className="text-green-400 font-bold ml-1">₹{c.level_1_payout || 0}</span></div>
                                         <div><span style={{ color: 'var(--text-muted)' }}>Reward:</span> <span className="text-teal-400 font-bold ml-1">{c.points} pts</span></div>
                                     </div>
+
+                                    {(c.comm_jso > 0 || c.comm_so > 0) && (
+                                        <div className="flex flex-wrap gap-1 mb-3 text-[10px]">
+                                            {c.comm_jso > 0 && <span className="text-amber-400 bg-amber-500/10 px-1 rounded">JSO:₹{c.comm_jso}</span>}
+                                            {c.comm_so > 0 && <span className="text-amber-400 bg-amber-500/10 px-1 rounded">SO:₹{c.comm_so}</span>}
+                                        </div>
+                                    )}
+
                                     <div className="flex justify-between items-center">
                                         <span className={`text-xs font-semibold ${c.status === 'active' ? 'text-green-400' : 'text-red-400'}`}>
-                                            {c.status.toUpperCase()}
+                                            {c.status === 'active' ? 'ACTIVE' : c.schedule_status === 'closed' ? 'CLOSED' : 'INACTIVE'}
                                         </span>
                                         <div className="flex gap-2 items-center">
                                             <button onClick={() => { 
@@ -741,7 +807,6 @@ export default function AdminDashboard({ showToast }) {
                                                 setCourseForm({ 
                                                     name: c.name, 
                                                     description: c.description || '', 
-                                                    course_type: c.course_type, 
                                                     points: c.points || 10, 
                                                     level_1_payout: c.level_1_payout || 0,
                                                     level_2_payout: c.level_2_payout || 0,
@@ -749,7 +814,15 @@ export default function AdminDashboard({ showToast }) {
                                                     level_4_payout: c.level_4_payout || 0,
                                                     level_5_payout: c.level_5_payout || 0,
                                                     price: c.price || 0, 
-                                                    is_active: c.status === 'active' 
+                                                    is_active: c.status === 'active',
+                                                    admission_start_date: c.admission_start_date || '',
+                                                    admission_end_date: c.admission_end_date || '',
+                                                    course_start_date: c.course_start_date || '',
+                                                    comm_jso: c.comm_jso || 0,
+                                                    comm_so: c.comm_so || 0,
+                                                    comm_sop: c.comm_sop || 0,
+                                                    comm_sdo: c.comm_sdo || 0,
+                                                    comm_platinum: c.comm_platinum || 0
                                                 }); 
                                                 setShowCourseModal(true); 
                                             }} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}><Edit2 className="w-4 h-4" /></button>
@@ -761,9 +834,44 @@ export default function AdminDashboard({ showToast }) {
                                 </div>
                             ))}
                         </div>
+
+                        {/* Special Offers Sub-section */}
+                        <div className="mt-6">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                    <Zap className="w-5 h-5 text-amber-400" /> Special Offers
+                                </h3>
+                                <button onClick={() => setShowOfferModal(true)} className="btn-primary py-1.5 px-3 text-sm flex items-center gap-1">
+                                    <Plus className="w-4 h-4" /> Create Offer
+                                </button>
+                            </div>
+                            {specialOffers.length === 0 ? (
+                                <div className="card text-center py-6"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>No special offers created yet</p></div>
+                            ) : (
+                                <div className="table-container card p-0 overflow-hidden">
+                                    <table className="data-table text-sm">
+                                        <thead><tr><th>Course</th><th>Valid Until</th><th>JSO</th><th>SO</th><th>SOP</th><th>SDO</th><th>Platinum</th><th>Status</th><th></th></tr></thead>
+                                        <tbody>
+                                            {specialOffers.map(o => (
+                                                <tr key={o.offer_id}>
+                                                    <td className="font-medium">{o.course_name}</td>
+                                                    <td>{formatDate(o.valid_until)}</td>
+                                                    <td className="text-amber-400">Rs.{o.jso_amount}</td>
+                                                    <td className="text-amber-400">Rs.{o.so_amount}</td>
+                                                    <td className="text-amber-400">Rs.{o.sop_amount}</td>
+                                                    <td className="text-amber-400">Rs.{o.sdo_amount}</td>
+                                                    <td className="text-amber-400">Rs.{o.platinum_amount}</td>
+                                                    <td><span className={`text-xs px-2 py-1 rounded ${o.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{o.isActive ? 'Active' : 'Inactive'}</span></td>
+                                                    <td><button onClick={() => handleDeleteOffer(o.offer_id)} disabled={actionLoading === `del-offer-${o.offer_id}`} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
-            </main>
 
                 {/* Bonuses Tab */}
                 {activeTab === 'bonuses' && (
@@ -873,9 +981,10 @@ export default function AdminDashboard({ showToast }) {
                         )}
                     </div>
                 )}
+            </main>
 
-                {/* Student Details Modal */}
-                {selectedStudent && (
+            {/* Student Details Modal */}
+            {selectedStudent && (
                 <div className="modal-overlay" onClick={() => setSelectedStudent(null)}>
                     <div className="modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4">
@@ -903,7 +1012,7 @@ export default function AdminDashboard({ showToast }) {
                             <div className="space-y-2 max-h-64 overflow-y-auto">
                                 {studentDetails.map(d => (
                                     <div key={d.id} className="p-3 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
-                                        <div className="flex justify-between"><span className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.course_name}</span><span className={`badge text-xs ${d.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>{d.course_type === 'paid' ? `Paid` : 'Free'}</span></div>
+                                        <div className="flex justify-between"><span className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.course_name}</span><span className={`badge text-xs ${d.price > 0 ? 'badge-paid' : 'badge-free'}`}>{d.price > 0 ? `Paid` : 'Free'}</span></div>
                                         <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Referred by: <span className="text-teal-400">{d.admitted_by_name}</span></p>
                                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Date: {formatDate(d.created_at)} • Status: <span className={d.status === 'approved' ? 'text-green-400' : 'text-amber-400'}>{d.status}</span></p>
                                     </div>
@@ -934,7 +1043,7 @@ export default function AdminDashboard({ showToast }) {
                             </div>
                         </div>
 
-                        {/* Promoter Info */}
+                        {/* Promoter Header Info */}
                         <div className="flex items-center gap-4 p-4 rounded-xl mb-4" style={{ background: 'var(--hover-bg)' }}>
                             <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ border: '3px solid var(--primary)', background: 'var(--bg-secondary)' }}>
                                 <User className="w-6 h-6" style={{ color: 'var(--text-muted)' }} />
@@ -946,15 +1055,10 @@ export default function AdminDashboard({ showToast }) {
                                     <LevelBadge level={selectedPromoter.rank} size="sm" />
                                     <span className="text-amber-400 font-semibold">{selectedPromoter.total_points || 0} pts</span>
                                 </div>
-                                {selectedPromoter.upline_chain && selectedPromoter.upline_chain.length > 0 && (
-                                    <p className="text-xs mt-2">
-                                        <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">
-                                            <Link2 className="w-3 h-3 inline mr-1" />Referred by ID: {selectedPromoter.upline_chain[0].id}
-                                        </span>
-                                    </p>
-                                )}
                             </div>
-                                      {/* Financial Stats */}
+                        </div>
+
+                        {/* Financial Stats */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
                             <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
                                 <p className="text-[10px] uppercase font-bold text-green-400 mb-1">Total Earned</p>
@@ -986,43 +1090,30 @@ export default function AdminDashboard({ showToast }) {
                                         const chain = typeof selectedPromoter.upline_chain === 'string' 
                                             ? JSON.parse(selectedPromoter.upline_chain) 
                                             : selectedPromoter.upline_chain || [];
-                                        
-                                        // Reverse so it's top-down: [Highest Admin, ..., Direct Referrer]
                                         const displayChain = [...chain].reverse();
-                                        
                                         return displayChain.map((uId, idx) => (
                                             <React.Fragment key={uId}>
                                                 <ChevronRight className="w-3 h-3 text-white/20" />
-                                                <span className="text-xs px-2 py-1 bg-white/5 rounded font-mono text-purple-400" title={`User ID: ${uId}`}>
-                                                    {uId}
-                                                </span>
+                                                <span className="text-xs px-2 py-1 bg-white/5 rounded font-mono text-purple-400" title={`User ID: ${uId}`}>{uId}</span>
                                             </React.Fragment>
                                         ));
-                                    } catch (e) {
-                                        return <span className="text-xs italic text-white/40">Direct Entry</span>;
-                                    }
+                                    } catch (e) { return <span className="text-xs italic text-white/40">Direct Entry</span>; }
                                 })()}
                                 <ChevronRight className="w-3 h-3 text-white/20" />
-                                <span className="text-xs px-2 py-1 bg-teal-500/20 rounded font-bold text-teal-400 ring-1 ring-teal-500/50">
-                                    {selectedPromoter.name} (YOU)
-                                </span>
+                                <span className="text-xs px-2 py-1 bg-teal-500/20 rounded font-bold text-teal-400 ring-1 ring-teal-500/50">{selectedPromoter.name} (YOU)</span>
                             </div>
                         </div>
-              </div>
 
                         {/* Promoters Referred by this promoter */}
                         {promoterReferredPromoters.length > 0 && (
                             <div className="mb-4">
                                 <h4 className="font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                    <Megaphone className="w-4 h-4 text-purple-400" />
-                                    Promoters Referred ({promoterReferredPromoters.length})
+                                    <Megaphone className="w-4 h-4 text-purple-400" /> Promoters Referred ({promoterReferredPromoters.length})
                                 </h4>
                                 <div className="space-y-2 max-h-40 overflow-y-auto">
                                     {promoterReferredPromoters.map(p => (
                                         <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
-                                            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}>
-                                                <User className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                                            </div>
+                                            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}><User className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
                                                 <p className="text-xs text-teal-400">{p.referral_code || 'Pending ID'}</p>
@@ -1040,10 +1131,8 @@ export default function AdminDashboard({ showToast }) {
 
                         {/* Students Referred */}
                         <h4 className="font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                            <GraduationCap className="w-4 h-4 text-purple-400" />
-                            Students Referred ({promoterReferrals.length})
+                            <GraduationCap className="w-4 h-4 text-purple-400" /> Students Referred ({promoterReferrals.length})
                         </h4>
-
                         {loadingDetails ? <div className="text-center py-4"><Spinner /></div> : promoterReferrals.length === 0 ? (
                             <p className="text-center py-4" style={{ color: 'var(--text-muted)' }}>No students referred yet</p>
                         ) : (
@@ -1058,7 +1147,7 @@ export default function AdminDashboard({ showToast }) {
                                             <span className={`text-xs px-2 py-1 rounded ${r.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>{r.status}</span>
                                         </div>
                                         <div className="flex justify-between items-center mt-2 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-                                            <span className={`badge text-xs ${r.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>{r.course_name}</span>
+                                            <span className="badge text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20">{r.course_name}</span>
                                             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(r.created_at)}</span>
                                         </div>
                                     </div>
@@ -1072,53 +1161,76 @@ export default function AdminDashboard({ showToast }) {
             {/* Course Modal */}
             {showCourseModal && (
                 <div className="modal-overlay" onClick={() => setShowCourseModal(false)}>
-                    <div className="modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
+                    <div className="modal-content" style={{ maxWidth: '560px' }} onClick={e => e.stopPropagation()}>
                         <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>{editingCourse ? 'Edit Course' : 'Add Course'}</h3>
                         <div className="space-y-4">
                             <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Course Name</label><input type="text" value={courseForm.name} onChange={e => setCourseForm({ ...courseForm, name: e.target.value })} className="input-field" placeholder="Enter course name" /></div>
                             <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Description</label><textarea value={courseForm.description} onChange={e => setCourseForm({ ...courseForm, description: e.target.value })} className="input-field" rows={2} placeholder="Course description" /></div>
-                            <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Course Type</label><select value={courseForm.course_type} onChange={e => setCourseForm({ ...courseForm, course_type: e.target.value })} className="input-field"><option value="free">Free</option><option value="paid">Paid</option></select></div>
-                            {courseForm.course_type === 'paid' && <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Price (₹)</label><input type="number" value={courseForm.price} onChange={e => setCourseForm({ ...courseForm, price: e.target.value })} className="input-field" placeholder="0" /></div>}
+                            <div className="grid grid-cols-1 gap-3">
+                                <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Course Price (₹)</label><input type="number" value={courseForm.price} onChange={e => setCourseForm({ ...courseForm, price: e.target.value })} className="input-field" placeholder="0" /></div>
+                            </div>
+                            {/* Schedule Section */}
+                            <div className="p-4 rounded-xl" style={{ background: 'var(--hover-bg)' }}>
+                                <h4 className="font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                    <Clock className="w-4 h-4 text-blue-400" />
+                                    Course Schedule
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Admission Start</label><input type="datetime-local" value={courseForm.admission_start_date} onChange={e => setCourseForm({ ...courseForm, admission_start_date: e.target.value })} className="input-field" /></div>
+                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Admission End</label><input type="datetime-local" value={courseForm.admission_end_date} onChange={e => setCourseForm({ ...courseForm, admission_end_date: e.target.value })} className="input-field" /></div>
+                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Course Start</label><input type="datetime-local" value={courseForm.course_start_date} onChange={e => setCourseForm({ ...courseForm, course_start_date: e.target.value })} className="input-field" /></div>
+                                </div>
+                            </div>
 
+                            {/* Payout & Points Section */}
                             <div className="p-4 rounded-xl space-y-4" style={{ background: 'var(--hover-bg)' }}>
                                 <h4 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                                     <DollarSign className="w-4 h-4 text-green-400" />
-                                    Commission & Points
+                                    Hierarchy Payouts (Flat INR)
                                 </h4>
                                 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 1 Payout (₹)</label>
+                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 1 Payout (Direct)</label>
                                         <input type="number" value={courseForm.level_1_payout} onChange={e => setCourseForm({ ...courseForm, level_1_payout: e.target.value })} className="input-field py-2" />
                                     </div>
                                     <div>
-                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Student Points</label>
+                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Student Reward Points</label>
                                         <input type="number" step="0.5" value={courseForm.points} onChange={e => setCourseForm({ ...courseForm, points: e.target.value })} className="input-field py-2" />
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 2 Payout (₹)</label>
-                                        <input type="number" value={courseForm.level_2_payout} onChange={e => setCourseForm({ ...courseForm, level_2_payout: e.target.value })} className="input-field py-2" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 3 Payout (₹)</label>
-                                        <input type="number" value={courseForm.level_3_payout} onChange={e => setCourseForm({ ...courseForm, level_3_payout: e.target.value })} className="input-field py-2" />
-                                    </div>
+                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 2 Payout</label><input type="number" value={courseForm.level_2_payout} onChange={e => setCourseForm({ ...courseForm, level_2_payout: e.target.value })} className="input-field py-2" /></div>
+                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 3 Payout</label><input type="number" value={courseForm.level_3_payout} onChange={e => setCourseForm({ ...courseForm, level_3_payout: e.target.value })} className="input-field py-2" /></div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 4 Payout (₹)</label>
-                                        <input type="number" value={courseForm.level_4_payout} onChange={e => setCourseForm({ ...courseForm, level_4_payout: e.target.value })} className="input-field py-2" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 5 Payout (₹)</label>
-                                        <input type="number" value={courseForm.level_5_payout} onChange={e => setCourseForm({ ...courseForm, level_5_payout: e.target.value })} className="input-field py-2" />
-                                    </div>
+                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 4 Payout</label><input type="number" value={courseForm.level_4_payout} onChange={e => setCourseForm({ ...courseForm, level_4_payout: e.target.value })} className="input-field py-2" /></div>
+                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 5 Payout</label><input type="number" value={courseForm.level_5_payout} onChange={e => setCourseForm({ ...courseForm, level_5_payout: e.target.value })} className="input-field py-2" /></div>
                                 </div>
-                                <p className="text-[10px] italic" style={{ color: 'var(--text-muted)' }}>Specify exact monetary amounts for each upline level. Points are awarded to Level 1 only.</p>
+                                <p className="text-[10px] italic" style={{ color: 'var(--text-muted)' }}>These flat amounts are distributed across the 5-level referral upline chain during admission approval.</p>
+                            </div>
+
+                            {/* Rank-Based Commission (Legacy/Fallback View) */}
+                            <div className="p-4 rounded-xl opacity-80" style={{ background: 'var(--hover-bg)' }}>
+                                <details>
+                                    <summary className="text-xs font-semibold cursor-pointer" style={{ color: 'var(--text-muted)' }}>Rank-Based Reference Values (Optional)</summary>
+                                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-2">
+                                        {[
+                                            { label: 'JSO', key: 'comm_jso' },
+                                            { label: 'SO', key: 'comm_so' },
+                                            { label: 'SOP', key: 'comm_sop' },
+                                            { label: 'SDO', key: 'comm_sdo' },
+                                            { label: 'PL', key: 'comm_platinum' },
+                                        ].map(({ label, key }) => (
+                                            <div key={key}>
+                                                <label className="block text-[10px] mb-1" style={{ color: 'var(--text-muted)' }}>{label}</label>
+                                                <input type="number" value={courseForm[key]} onChange={e => setCourseForm({ ...courseForm, [key]: e.target.value })} className="input-field py-1 text-xs" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </details>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -1139,7 +1251,9 @@ export default function AdminDashboard({ showToast }) {
                         <div className="space-y-4">
                             <div><label className="block text-sm mb-1">Full Name</label><input type="text" value={newUserForm.name} onChange={e => setNewUserForm({ ...newUserForm, name: e.target.value })} className="input-field" placeholder="Full Name" /></div>
                             <div><label className="block text-sm mb-1">WhatsApp Number</label><input type="text" value={newUserForm.phone} onChange={e => setNewUserForm({ ...newUserForm, phone: e.target.value })} className="input-field" placeholder="9876543210" /></div>
+                            <div><label className="block text-sm mb-1">Email</label><input type="email" value={newUserForm.email} onChange={e => setNewUserForm({ ...newUserForm, email: e.target.value })} className="input-field" placeholder="email@example.com" /></div>
                             <div><label className="block text-sm mb-1">Password</label><input type="password" value={newUserForm.password} onChange={e => setNewUserForm({ ...newUserForm, password: e.target.value })} className="input-field" placeholder="********" /></div>
+                            <div><label className="block text-sm mb-1">Upline Referral Code (Optional)</label><input type="text" value={newUserForm.upline_referral_code} onChange={e => setNewUserForm({ ...newUserForm, upline_referral_code: e.target.value })} className="input-field" placeholder="e.g. JSO1005" /></div>
                             <div>
                                 <label className="block text-sm mb-1">Initial Rank</label>
                                 <select value={newUserForm.rank} onChange={e => setNewUserForm({ ...newUserForm, rank: e.target.value })} className="input-field">
@@ -1163,23 +1277,26 @@ export default function AdminDashboard({ showToast }) {
 
             {/* Create Bonus Modal */}
             {showBonusModal && (
-                <div className="modal-overlay" onClick={() => setShowBonusModal(false)}>
-                    <div className="modal-content" style={{ maxWidth: '450px' }} onClick={e => e.stopPropagation()}>
+                <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setShowBonusModal(false)}>
+                    <div className="modal-content" style={{ maxWidth: '450px', position: 'relative', zIndex: 10000 }} onClick={e => e.stopPropagation()}>
                         <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Create Bonus Campaign</h3>
+                        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>This bonus boosts the Level 1 (Direct) payout for the selected course during the campaign period.</p>
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm mb-1">Target Course</label>
-                                <select value={bonusForm.course_id} onChange={e => setBonusForm({ ...bonusForm, course_id: e.target.value })} className="input-field">
+                                <select value={bonusForm.course_id} onChange={e => setBonusForm({ ...bonusForm, course_id: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
                                     <option value="">Select Course</option>
-                                    {courses.map(c => <option key={c.course_id} value={c.course_id}>{c.course_name}</option>)}
+                                    {courses.map(c => <option key={c.id || c.course_id} value={c.id || c.course_id}>{c.name || c.course_name}</option>)}
                                 </select>
                             </div>
-                            <div><label className="block text-sm mb-1">Bonus Amount (₹)</label><input type="number" value={bonusForm.bonus_amount} onChange={e => setBonusForm({ ...bonusForm, bonus_amount: e.target.value })} className="input-field" placeholder="100" /></div>
-                            <div><label className="block text-sm mb-1">Start Date/Time</label><input type="datetime-local" value={bonusForm.start_time} onChange={e => setBonusForm({ ...bonusForm, start_time: e.target.value })} className="input-field" /></div>
-                            <div><label className="block text-sm mb-1">End Date/Time</label><input type="datetime-local" value={bonusForm.end_time} onChange={e => setBonusForm({ ...bonusForm, end_time: e.target.value })} className="input-field" /></div>
+                            <div><label className="block text-sm mb-1">Extra Bonus Amount (₹)</label><input type="number" value={bonusForm.bonus_amount} onChange={e => setBonusForm({ ...bonusForm, bonus_amount: e.target.value })} className="input-field" placeholder="100" /></div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div><label className="block text-sm mb-1">Start Date</label><input type="datetime-local" value={bonusForm.start_time} onChange={e => setBonusForm({ ...bonusForm, start_time: e.target.value })} className="input-field text-xs px-2" /></div>
+                                <div><label className="block text-sm mb-1">End Date</label><input type="datetime-local" value={bonusForm.end_time} onChange={e => setBonusForm({ ...bonusForm, end_time: e.target.value })} className="input-field text-xs px-2" /></div>
+                            </div>
                             <div>
                                 <label className="block text-sm mb-1">Eligibility</label>
-                                <select value={bonusForm.eligible_roles} onChange={e => setBonusForm({ ...bonusForm, eligible_roles: e.target.value })} className="input-field">
+                                <select value={bonusForm.eligible_roles} onChange={e => setBonusForm({ ...bonusForm, eligible_roles: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
                                     <option value="ALL">ALL RANKS</option>
                                     <option value="JSO">JSO ONLY</option>
                                     <option value="SO">SO ONLY</option>
@@ -1201,7 +1318,7 @@ export default function AdminDashboard({ showToast }) {
 
             {/* Edit User Modal */}
             {showEditUserModal && (
-                <div className="modal-overlay" onClick={() => setShowEditUserModal(false)}>
+                <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setShowEditUserModal(false)}>
                     <div className="modal-content" style={{ maxWidth: '450px' }} onClick={e => e.stopPropagation()}>
                         <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Edit Promoter Credentials</h3>
                         <div className="space-y-4">
@@ -1216,17 +1333,17 @@ export default function AdminDashboard({ showToast }) {
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-sm mb-1">Rank</label>
-                                    <select value={editUserForm.rank} onChange={e => setEditUserForm({ ...editUserForm, rank: e.target.value })} className="input-field">
-                                        <option value="Junior Sales Officer">JSO</option>
-                                        <option value="Sales Officer">SO</option>
-                                        <option value="Sales Officer Premium">SOP</option>
-                                        <option value="Senior Development Officer">SDO</option>
-                                        <option value="Platinum Leader">Platinum</option>
+                                    <select value={editUserForm.rank} onChange={e => setEditUserForm({ ...editUserForm, rank: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
+                                        <option value="JSO">JSO</option>
+                                        <option value="SO">SO</option>
+                                        <option value="SOP">SOP</option>
+                                        <option value="SDO">SDO</option>
+                                        <option value="Platinum">Platinum</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label className="block text-sm mb-1">Status</label>
-                                    <select value={editUserForm.status} onChange={e => setEditUserForm({ ...editUserForm, status: e.target.value })} className="input-field">
+                                    <select value={editUserForm.status} onChange={e => setEditUserForm({ ...editUserForm, status: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
                                         <option value="active">Active</option>
                                         <option value="pending">Pending</option>
                                         <option value="suspended">Suspended</option>
@@ -1246,7 +1363,7 @@ export default function AdminDashboard({ showToast }) {
 
             {/* Edit Admission Modal */}
             {showEditAdmissionModal && (
-                <div className="modal-overlay" onClick={() => setShowEditAdmissionModal(false)}>
+                <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setShowEditAdmissionModal(false)}>
                     <div className="modal-content" style={{ maxWidth: '450px' }} onClick={e => e.stopPropagation()}>
                         <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Edit Student Info</h3>
                         <div className="space-y-4">
@@ -1254,8 +1371,8 @@ export default function AdminDashboard({ showToast }) {
                             <div><label className="block text-sm mb-1">WhatsApp Number</label><input type="text" value={editAdmissionForm.student_phone} onChange={e => setEditAdmissionForm({ ...editAdmissionForm, student_phone: e.target.value })} className="input-field" /></div>
                             <div>
                                 <label className="block text-sm mb-1">Course</label>
-                                <select value={editAdmissionForm.course_id} onChange={e => setEditAdmissionForm({ ...editAdmissionForm, course_id: e.target.value })} className="input-field">
-                                    {courses.map(c => <option key={c.course_id} value={c.course_id}>{c.course_name} (₹{c.price})</option>)}
+                                <select value={editAdmissionForm.course_id} onChange={e => setEditAdmissionForm({ ...editAdmissionForm, course_id: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
+                                    {courses.map(c => <option key={c.id || c.course_id} value={c.id || c.course_id}>{c.name || c.course_name} (₹{c.price})</option>)}
                                 </select>
                             </div>
                             <div className="flex gap-2 pt-2">

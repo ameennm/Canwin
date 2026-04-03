@@ -1,24 +1,31 @@
 export async function onRequestPost({ request, env }) {
   const { 
     course_name, price, points,
-    level_1_payout, level_2_payout, level_3_payout, level_4_payout, level_5_payout 
+    level_1_payout, level_2_payout, level_3_payout, level_4_payout, level_5_payout,
+    admission_start_date, admission_end_date, course_start_date,
+    comm_jso, comm_so, comm_sop, comm_sdo, comm_platinum
   } = await request.json();
   const db = env.DB;
 
   try {
     const defaultPoints = price ? Math.round(price * 0.2) : 10;
-    
+    const hasSchedule = !!(admission_start_date || admission_end_date || course_start_date);
+
     const result = await db.prepare(`
       INSERT INTO courses (
         course_name, course_price, points_per_admission, 
         level_1_payout, level_2_payout, level_3_payout, level_4_payout, level_5_payout,
-        commission_pool_percentage, status
+        admission_start_date, admission_end_date, course_start_date,
+        comm_jso, comm_so, comm_sop, comm_sdo, comm_platinum,
+        commission_pool_percentage, schedule_status, status
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
     `).bind(
         course_name, price || 0, points || defaultPoints,
         level_1_payout || 0, level_2_payout || 0, level_3_payout || 0, level_4_payout || 0, level_5_payout || 0,
-        0
+        admission_start_date || null, admission_end_date || null, course_start_date || null,
+        comm_jso || 0, comm_so || 0, comm_sop || 0, comm_sdo || 0, comm_platinum || 0,
+        30, hasSchedule ? 'scheduled' : 'unscheduled'
     )
       .run();
 
@@ -36,15 +43,18 @@ export async function onRequestGet({ env }) {
     const courses = await db.prepare(`
         SELECT course_id as id, course_name as name, course_price as price, 
                points_per_admission as points, level_1_payout, level_2_payout, 
-               level_3_payout, level_4_payout, level_5_payout, 
-               status, created_at, CASE WHEN course_price > 0 THEN "paid" ELSE "free" END as course_type 
+               level_3_payout, level_4_payout, level_5_payout,
+               admission_start_date, admission_end_date, course_start_date,
+               comm_jso, comm_so, comm_sop, comm_sdo, comm_platinum,
+               schedule_status, status, created_at
         FROM courses 
         ORDER BY created_at DESC`).all();
+    
     return new Response(JSON.stringify(courses.results), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { 
+    return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });

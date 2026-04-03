@@ -8,7 +8,7 @@ export default defineConfig({
     port: 5179,
     proxy: {
       '/api': {
-        target: 'https://canwin.pages.dev',
+        target: 'https://742628e5.canwin-cxi.pages.dev',
         changeOrigin: true,
         secure: false,
       }

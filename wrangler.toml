@@ -5,6 +5,6 @@ pages_build_output_dir = "dist"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "canwin-db"
-database_id = "165397f8-d5bb-4b06-a5d9-a44c2c1cffc2"
+database_name = "canwin_v2_final_db"
+database_id = "5fea3ebe-b064-4298-852f-ab4fda9835e7"
 migrations_dir = "migrations"
