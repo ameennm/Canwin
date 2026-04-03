@@ -40,7 +40,8 @@ export default function AdminDashboard({ showToast }) {
     const [courseForm, setCourseForm] = useState({ 
         name: '', description: '', points: 10, 
         level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0,
-        price: 0, is_active: true 
+        price: 0, is_active: true,
+        comm_jso: 0, comm_so: 0, comm_sop: 0, comm_sdo: 0, comm_platinum: 0
     });
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
     const [editingUser, setEditingUser] = useState(null);
@@ -83,7 +84,7 @@ export default function AdminDashboard({ showToast }) {
                 bonusesData,
                 offersData
             ] = await Promise.all([
-                api.courses.list(),
+                api.courses.list({ admin: true }),
                 api.admin.getStats(),
                 api.admin.getPromoters(),
                 api.admin.getStudents(),
@@ -317,6 +318,34 @@ export default function AdminDashboard({ showToast }) {
         }
     };
 
+    const handleToggleBonusStatus = async (id, currentStatus) => {
+        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+        setActionLoading(`bonus-toggle-${id}`);
+        try {
+            await api.bonuses.update(id, { status: newStatus });
+            showToast('Bonus status updated!');
+            fetchData();
+        } catch (err) {
+            showToast('Failed to update bonus status', 'error');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleDeleteBonus = async (id) => {
+        if (!confirm('Are you sure you want to delete this bonus campaign?')) return;
+        setActionLoading(`bonus-del-${id}`);
+        try {
+            await api.bonuses.delete(id);
+            showToast('Bonus campaign deleted!');
+            fetchData();
+        } catch (err) {
+            showToast('Failed to delete bonus', 'error');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
     const handleDeleteOffer = async (id) => {
         if (!confirm('Cancel this offer?')) return;
         setActionLoading(`del-offer-${id}`);
@@ -370,15 +399,6 @@ export default function AdminDashboard({ showToast }) {
                 level_3_payout: parseFloat(courseForm.level_3_payout) || 0,
                 level_4_payout: parseFloat(courseForm.level_4_payout) || 0,
                 level_5_payout: parseFloat(courseForm.level_5_payout) || 0,
-                commission_pool_percentage: 30,
-                admission_start_date: courseForm.admission_start_date || null,
-                admission_end_date: courseForm.admission_end_date || null,
-                course_start_date: courseForm.course_start_date || null,
-                comm_jso: parseFloat(courseForm.comm_jso) || 0,
-                comm_so: parseFloat(courseForm.comm_so) || 0,
-                comm_sop: parseFloat(courseForm.comm_sop) || 0,
-                comm_sdo: parseFloat(courseForm.comm_sdo) || 0,
-                comm_platinum: parseFloat(courseForm.comm_platinum) || 0,
                 status: courseForm.is_active ? 'active' : 'inactive'
             };
             if (editingCourse) {
@@ -392,8 +412,7 @@ export default function AdminDashboard({ showToast }) {
             setCourseForm({ 
                 name: '', description: '', points: 10, 
                 level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0, 
-                price: 0, is_active: true, admission_start_date: '', admission_end_date: '', 
-                course_start_date: '', comm_jso: 0, comm_so: 0, comm_sop: 0, comm_sdo: 0, comm_platinum: 0 
+                price: 0, is_active: true, comm_jso: 0, comm_so: 0, comm_sop: 0, comm_sdo: 0, comm_platinum: 0 
             });
             fetchData();
         } catch (err) { showToast('Failed to save course', 'error'); }
@@ -768,7 +787,7 @@ export default function AdminDashboard({ showToast }) {
                 {/* Courses Tab */}
                 {activeTab === 'courses' && (
                     <div className="space-y-4">
-                        <button onClick={() => { setEditingCourse(null); setCourseForm({ name: '', description: '', points: 10, level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0, price: 0, is_active: true, admission_start_date: '', admission_end_date: '', course_start_date: '', comm_jso: 0, comm_so: 0, comm_sop: 0, comm_sdo: 0, comm_platinum: 0 }); setShowCourseModal(true); }} className="btn-primary flex items-center gap-2"><Plus className="w-5 h-5" />Add Course</button>
+                        <button onClick={() => { setEditingCourse(null); setCourseForm({ name: '', description: '', points: 10, level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0, price: 0, is_active: true, comm_jso: 0, comm_so: 0, comm_sop: 0, comm_sdo: 0, comm_platinum: 0 }); setShowCourseModal(true); }} className="btn-primary flex items-center gap-2"><Plus className="w-5 h-5" />Add Course</button>
                         <div className="cards-grid">
                             {courses.map(c => (
                                 <div key={c.id} className="card hover:border-teal-500/30 transition-all">
@@ -779,12 +798,6 @@ export default function AdminDashboard({ showToast }) {
                                         </span>
                                     </div>
                                     <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{c.description || 'No description'}</p>
-                                    
-                                    {c.course_start_date && (
-                                        <p className="text-xs mb-3 flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                                            <Clock className="w-3 h-3" /> Starts: {formatDate(c.course_start_date)}
-                                        </p>
-                                    )}
 
                                     <div className="grid grid-cols-2 gap-2 mb-3 p-2 rounded-lg text-xs" style={{ background: 'var(--hover-bg)' }}>
                                         <div><span style={{ color: 'var(--text-muted)' }}>L1 Payout:</span> <span className="text-green-400 font-bold ml-1">₹{c.level_1_payout || 0}</span></div>
@@ -816,9 +829,6 @@ export default function AdminDashboard({ showToast }) {
                                                     level_5_payout: c.level_5_payout || 0,
                                                     price: c.price || 0, 
                                                     is_active: c.status === 'active',
-                                                    admission_start_date: c.admission_start_date || '',
-                                                    admission_end_date: c.admission_end_date || '',
-                                                    course_start_date: c.course_start_date || '',
                                                     comm_jso: c.comm_jso || 0,
                                                     comm_so: c.comm_so || 0,
                                                     comm_sop: c.comm_sop || 0,
@@ -913,13 +923,33 @@ export default function AdminDashboard({ showToast }) {
                                                     {formatDate(b.start_time)} - {formatDate(b.end_time)}
                                                 </td>
                                                 <td className="px-4 py-4">
-                                                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${
-                                                        isActive ? 'bg-green-500/20 text-green-400' :
-                                                        isUpcoming ? 'bg-blue-500/20 text-blue-400' :
-                                                        'bg-red-500/20 text-red-400'
-                                                    }`}>
-                                                        {isActive ? 'Active' : isUpcoming ? 'Upcoming' : 'Expired'}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${
+                                                            b.status === 'active' && isActive ? 'bg-green-500/20 text-green-400' :
+                                                            b.status === 'active' && isUpcoming ? 'bg-blue-500/20 text-blue-400' :
+                                                            b.status === 'inactive' ? 'bg-gray-500/20 text-gray-400' :
+                                                            'bg-red-500/20 text-red-400'
+                                                        }`}>
+                                                            {b.status === 'inactive' ? 'Deactivated' : (isActive ? 'Active' : isUpcoming ? 'Upcoming' : 'Expired')}
+                                                        </span>
+                                                        <button 
+                                                            onClick={() => handleToggleBonusStatus(b.id || b.bonus_id, b.status)}
+                                                            disabled={actionLoading === `bonus-toggle-${b.id || b.bonus_id}`}
+                                                            className="p-1 rounded hover:bg-white/5"
+                                                            title={b.status === 'active' ? 'Deactivate' : 'Activate'}
+                                                        >
+                                                            {actionLoading === `bonus-toggle-${b.id || b.bonus_id}` ? <Spinner size="sm" /> : 
+                                                                (b.status === 'active' ? <RefreshCw className="w-3 h-3 text-amber-400" /> : <RefreshCw className="w-3 h-3 text-green-400" />)}
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteBonus(b.id || b.bonus_id)}
+                                                            disabled={actionLoading === `bonus-del-${b.id || b.bonus_id}`}
+                                                            className="p-1 rounded hover:bg-red-500/10 text-red-400"
+                                                            title="Delete Campaign"
+                                                        >
+                                                            {actionLoading === `bonus-del-${b.id || b.bonus_id}` ? <Spinner size="sm" /> : <Trash2 className="w-3 h-3" />}
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -1169,18 +1199,6 @@ export default function AdminDashboard({ showToast }) {
                             <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Description</label><textarea value={courseForm.description} onChange={e => setCourseForm({ ...courseForm, description: e.target.value })} className="input-field" rows={2} placeholder="Course description" /></div>
                             <div className="grid grid-cols-1 gap-3">
                                 <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Course Price (₹)</label><input type="number" value={courseForm.price} onChange={e => setCourseForm({ ...courseForm, price: e.target.value })} className="input-field" placeholder="0" /></div>
-                            </div>
-                            {/* Schedule Section */}
-                            <div className="p-4 rounded-xl" style={{ background: 'var(--hover-bg)' }}>
-                                <h4 className="font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                    <Clock className="w-4 h-4 text-blue-400" />
-                                    Course Schedule
-                                </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Admission Start</label><input type="datetime-local" value={courseForm.admission_start_date} onChange={e => setCourseForm({ ...courseForm, admission_start_date: e.target.value })} className="input-field" /></div>
-                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Admission End</label><input type="datetime-local" value={courseForm.admission_end_date} onChange={e => setCourseForm({ ...courseForm, admission_end_date: e.target.value })} className="input-field" /></div>
-                                    <div><label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Course Start</label><input type="datetime-local" value={courseForm.course_start_date} onChange={e => setCourseForm({ ...courseForm, course_start_date: e.target.value })} className="input-field" /></div>
-                                </div>
                             </div>
 
                             {/* Payout & Points Section */}

@@ -206,7 +206,7 @@ export default function AddStudentPage({ showToast }) {
                                     <option value="">-- Select a course --</option>
                                     {courses.map((course) => (
                                         <option key={course.id} value={course.id}>
-                                            {course.name} ({course.course_type === 'paid' ? `₹${course.price}` : 'Free'}) - +{course.points} pts
+                                            {course.name} ({course.price > 0 ? `₹${course.price}` : 'Free'}) - +{course.points} pts
                                         </option>
                                     ))}
                                 </select>
@@ -219,19 +219,19 @@ export default function AddStudentPage({ showToast }) {
                         <div
                             className="card flex items-center justify-between"
                             style={{
-                                background: selectedCourse.course_type === 'paid'
+                                background: selectedCourse.price > 0
                                     ? 'rgba(245, 158, 11, 0.15)'
                                     : 'rgba(34, 197, 94, 0.15)',
-                                border: `1px solid ${selectedCourse.course_type === 'paid' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(34, 197, 94, 0.3)'}`
+                                border: `1px solid ${selectedCourse.price > 0 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(34, 197, 94, 0.3)'}`
                             }}
                         >
                             <div className="flex items-center gap-2">
-                                <Zap className={`w-5 h-5 ${selectedCourse.course_type === 'paid' ? 'text-amber-400' : 'text-green-400'}`} />
+                                <Zap className={`w-5 h-5 ${selectedCourse.price > 0 ? 'text-amber-400' : 'text-green-400'}`} />
                                 <span style={{ color: 'var(--text-secondary)' }}>Points you'll earn:</span>
                             </div>
                             <span
                                 className="text-xl font-bold"
-                                style={{ color: selectedCourse.course_type === 'paid' ? '#f59e0b' : '#22c55e' }}
+                                style={{ color: selectedCourse.price > 0 ? '#f59e0b' : '#22c55e' }}
                             >
                                 +{selectedCourse.points}
                             </span>

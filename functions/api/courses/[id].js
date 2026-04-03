@@ -2,15 +2,11 @@ export async function onRequestPut({ params, request, env }) {
   const courseId = params.id;
   const {
     course_name, price, points, commission_pool_percentage, status,
-    admission_start_date, admission_end_date, course_start_date,
     comm_jso, comm_so, comm_sop, comm_sdo, comm_platinum
   } = await request.json();
   const db = env.DB;
 
   try {
-    // Check if course has schedule dates
-    const hasSchedule = !!(admission_start_date || admission_end_date || course_start_date);
-
     await db.prepare(`
       UPDATE courses
       SET course_name = ?,
@@ -18,21 +14,15 @@ export async function onRequestPut({ params, request, env }) {
           points_per_admission = ?,
           commission_pool_percentage = ?,
           status = ?,
-          admission_start_date = ?,
-          admission_end_date = ?,
-          course_start_date = ?,
           comm_jso = ?,
           comm_so = ?,
           comm_sop = ?,
           comm_sdo = ?,
-          comm_platinum = ?,
-          schedule_status = ?
+          comm_platinum = ?
       WHERE course_id = ?
     `).bind(
       course_name, price, points, commission_pool_percentage, status,
-      admission_start_date || null, admission_end_date || null, course_start_date || null,
       comm_jso || 0, comm_so || 0, comm_sop || 0, comm_sdo || 0, comm_platinum || 0,
-      hasSchedule ? 'scheduled' : 'unscheduled',
       courseId
     ).run();
 

@@ -20,10 +20,12 @@ export async function onRequestPost({ request, env }) {
       .first();
 
     if (!user) {
+      console.warn(`Login failed for phone: ${phone} (User not found or password mismatch)`);
       return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
     }
 
-    if (user.status !== 'active') {
+    if (user.status && user.status !== 'active') {
+       console.warn(`Login blocked for phone: ${phone} (Status: ${user.status})`);
        return new Response(JSON.stringify({ error: 'Account is suspended' }), { status: 403 });
     }
 

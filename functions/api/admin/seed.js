@@ -37,8 +37,8 @@ export async function onRequestPost({ request, env, data }) {
     // 1. Create Super Admin
     const adminRes = await db.prepare(`
       INSERT INTO users (name, phone, email, password_hash, rank, referral_code, upline_chain, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind('Super Admin', 'admin', 'admin@canwin.com', adminPass, 'Super Admin', 'ADMIN', '[]', 'active').run();
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
+    `).bind('Super Admin', 'admin', 'admin@canwin.com', adminPass, 'Super Admin', 'ADMIN', '[]').run();
     const adminId = adminRes.lastRowId;
     await db.prepare('INSERT INTO user_stats (user_id) VALUES (?)').bind(adminId).run();
 

@@ -32,7 +32,10 @@ export const api = {
     getProfile: (userId) => request(`/wallet?user_id=${userId}`), // Reusing wallet for now or add profile endpoint
   },
   courses: {
-    list: () => request('/courses'),
+    list: (params = {}) => {
+      const query = params.admin ? '?admin=true' : '';
+      return request(`/courses${query}`);
+    },
     create: (data) => request('/courses', { method: 'POST', body: JSON.stringify(data) }),
     update: (id, data) => request(`/courses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id) => request(`/courses/${id}`, { method: 'DELETE' }),
@@ -51,6 +54,8 @@ export const api = {
   bonuses: {
     list: () => request('/bonuses'),
     create: (data) => request('/bonuses', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/bonuses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id) => request(`/bonuses/${id}`, { method: 'DELETE' }),
   },
   admin: {
     getStats: () => request('/admin/stats'),
