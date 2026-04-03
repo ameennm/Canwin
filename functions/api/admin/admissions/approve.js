@@ -40,6 +40,7 @@ export async function onRequestPost({ request, env, data }) {
     ];
 
     // 6. Check for active bonus campaign (EXCLUSIVELY for Level 1 boost)
+    const now = new Date();
     const nowISO = now.toISOString();
     const activeBonus = await db.prepare(`
       SELECT * FROM bonus_campaigns
