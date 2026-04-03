@@ -11,16 +11,34 @@ export async function onRequestGet({ request, env, data }) {
 
   try {
     // Read from optimized user_stats table instead of calculating
-    const stats = await db.prepare(`
+    let stats = await db.prepare(`
       SELECT s.wallet_balance, s.withdrawable_balance, s.pending_balance, s.total_paid, s.total_points, s.total_earnings, s.direct_referrals, s.team_size, u.rank 
       FROM user_stats s 
       JOIN users u ON s.user_id = u.id 
       WHERE user_id = ?
     `).bind(userId).first();
+    
+    // Industrial Standard: Graceful recovery if statistics row is missing
+    if (!stats) {
+        // Confirm user exists to check if it's a seed mismatch
+        const user = await db.prepare('SELECT id, rank FROM users WHERE id = ?').bind(userId).first();
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'User not found' }), { status: 404 });
+        }
+        
+        // Auto-initialize if row is genuinely missing
+        await db.prepare('INSERT OR IGNORE INTO user_stats (user_id) VALUES (?)').bind(userId).run();
+        
+        // Re-fetch
+        stats = await db.prepare(`
+          SELECT s.wallet_balance, s.withdrawable_balance, s.pending_balance, s.total_paid, s.total_points, s.total_earnings, s.direct_referrals, s.team_size, u.rank 
+          FROM user_stats s 
+          JOIN users u ON s.user_id = u.id 
+          WHERE user_id = ?
+        `).bind(userId).first();
+    }
 
-    if (!stats) return new Response(JSON.stringify({ error: 'User stats not found' }), { status: 404 });
-
-    return new Response(JSON.stringify(stats), {
+    return new Response(JSON.stringify(stats || { error: 'Stats missing' }), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {

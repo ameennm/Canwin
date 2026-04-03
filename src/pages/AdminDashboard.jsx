@@ -38,7 +38,7 @@ export default function AdminDashboard({ showToast }) {
     const [showCourseModal, setShowCourseModal] = useState(false);
     const [editingCourse, setEditingCourse] = useState(null);
     const [courseForm, setCourseForm] = useState({ 
-        name: '', description: '', course_type: 'paid', points: 10, 
+        name: '', description: '', points: 10, 
         level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0,
         price: 0, is_active: true 
     });
@@ -331,9 +331,10 @@ export default function AdminDashboard({ showToast }) {
     const handleVerifyReferral = async (referralId) => {
         setActionLoading(referralId);
         try {
-            const res = await api.admin.admissions.approve(referralId);
+            await api.admin.admissions.approve(referralId);
             showToast(`Admission ${referralId} verified successfully!`);
-            // Immediate re-fetch for all tabs to sync state
+            // Industrial Standard: Immediate local state sync + background refetch
+            setPendingReferrals(prev => prev.filter(r => r.id !== referralId));
             await fetchData();
         } catch (err) { 
             showToast(err.message || 'Failed to verify', 'error'); 
@@ -389,7 +390,7 @@ export default function AdminDashboard({ showToast }) {
             setShowCourseModal(false);
             setEditingCourse(null);
             setCourseForm({ 
-                name: '', description: '', course_type: 'paid', points: 10, 
+                name: '', description: '', points: 10, 
                 level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0, 
                 price: 0, is_active: true, admission_start_date: '', admission_end_date: '', 
                 course_start_date: '', comm_jso: 0, comm_so: 0, comm_sop: 0, comm_sdo: 0, comm_platinum: 0 
@@ -1277,16 +1278,21 @@ export default function AdminDashboard({ showToast }) {
 
             {/* Create Bonus Modal */}
             {showBonusModal && (
-                <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setShowBonusModal(false)}>
-                    <div className="modal-content" style={{ maxWidth: '450px', position: 'relative', zIndex: 10000 }} onClick={e => e.stopPropagation()}>
+                <div className="modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowBonusModal(false)}>
+                    <div className="modal-content relative" style={{ maxWidth: '450px', zIndex: 100000 }} onClick={e => e.stopPropagation()}>
                         <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Create Bonus Campaign</h3>
                         <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>This bonus boosts the Level 1 (Direct) payout for the selected course during the campaign period.</p>
                         <div className="space-y-4">
-                            <div>
+                            <div className="relative" style={{ zIndex: 100001 }}>
                                 <label className="block text-sm mb-1">Target Course</label>
-                                <select value={bonusForm.course_id} onChange={e => setBonusForm({ ...bonusForm, course_id: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
+                                <select 
+                                    value={bonusForm.course_id} 
+                                    onChange={e => setBonusForm({ ...bonusForm, course_id: e.target.value })} 
+                                    className="input-field bg-[#1a1b2e] text-white cursor-pointer"
+                                    style={{ position: 'relative', zIndex: 100002 }}
+                                >
                                     <option value="">Select Course</option>
-                                    {courses.map(c => <option key={c.id || c.course_id} value={c.id || c.course_id}>{c.name || c.course_name}</option>)}
+                                    {courses.map(c => <option key={c.id || c.course_id} value={c.id || c.course_id} className="bg-[#1a1b2e]">{c.name || c.course_name}</option>)}
                                 </select>
                             </div>
                             <div><label className="block text-sm mb-1">Extra Bonus Amount (₹)</label><input type="number" value={bonusForm.bonus_amount} onChange={e => setBonusForm({ ...bonusForm, bonus_amount: e.target.value })} className="input-field" placeholder="100" /></div>
@@ -1294,15 +1300,20 @@ export default function AdminDashboard({ showToast }) {
                                 <div><label className="block text-sm mb-1">Start Date</label><input type="datetime-local" value={bonusForm.start_time} onChange={e => setBonusForm({ ...bonusForm, start_time: e.target.value })} className="input-field text-xs px-2" /></div>
                                 <div><label className="block text-sm mb-1">End Date</label><input type="datetime-local" value={bonusForm.end_time} onChange={e => setBonusForm({ ...bonusForm, end_time: e.target.value })} className="input-field text-xs px-2" /></div>
                             </div>
-                            <div>
+                            <div className="relative" style={{ zIndex: 100001 }}>
                                 <label className="block text-sm mb-1">Eligibility</label>
-                                <select value={bonusForm.eligible_roles} onChange={e => setBonusForm({ ...bonusForm, eligible_roles: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
-                                    <option value="ALL">ALL RANKS</option>
-                                    <option value="JSO">JSO ONLY</option>
-                                    <option value="SO">SO ONLY</option>
-                                    <option value="SOP">SOP ONLY</option>
-                                    <option value="SDO">SDO ONLY</option>
-                                    <option value="Platinum">Platinum ONLY</option>
+                                <select 
+                                    value={bonusForm.eligible_roles} 
+                                    onChange={e => setBonusForm({ ...bonusForm, eligible_roles: e.target.value })} 
+                                    className="input-field bg-[#1a1b2e] text-white cursor-pointer"
+                                    style={{ position: 'relative', zIndex: 100002 }}
+                                >
+                                    <option value="ALL" className="bg-[#1a1b2e]">ALL RANKS</option>
+                                    <option value="JSO" className="bg-[#1a1b2e]">JSO ONLY</option>
+                                    <option value="SO" className="bg-[#1a1b2e]">SO ONLY</option>
+                                    <option value="SOP" className="bg-[#1a1b2e]">SOP ONLY</option>
+                                    <option value="SDO" className="bg-[#1a1b2e]">SDO ONLY</option>
+                                    <option value="Platinum" className="bg-[#1a1b2e]">Platinum ONLY</option>
                                 </select>
                             </div>
                             <div className="flex gap-2 pt-2">

@@ -40,16 +40,31 @@ export async function onRequestPost({ params, env }) {
     }
     const fullChain = [referrer.id, ...uplineChain];
 
+    // 4. Check for active Bonus Campaign
+    const activeBonus = await db.prepare(`
+      SELECT bonus_amount 
+      FROM bonus_campaigns 
+      WHERE course_id = ? AND status = 'active'
+      AND start_date <= CURRENT_TIMESTAMP AND end_date >= CURRENT_TIMESTAMP
+      LIMIT 1
+    `).bind(referral.course_id).first();
+
     const statements = [];
     let totalDistributed = 0;
 
-    // 4. Distribute Commissions across 5 Levels
+    // 5. Distribute Commissions across 5 Levels
     for (let i = 0; i < distribution.length; i++) {
-      const amount = Math.round(totalPool * distribution[i].percentage * 100) / 100;
+      let amount = Math.round(totalPool * distribution[i].percentage * 100) / 100;
       const userId = fullChain[i];
 
       if (userId) {
-        // Distribute to this level
+        // Special Logic: Add Bonus only to Level 1 (Direct Referrer)
+        let isBonusApplied = false;
+        if (i === 0 && activeBonus) {
+            amount += activeBonus.bonus_amount;
+            isBonusApplied = true;
+        }
+
         statements.push(db.prepare(`
           UPDATE user_stats 
           SET pending_balance = pending_balance + ?, 
@@ -57,16 +72,16 @@ export async function onRequestPost({ params, env }) {
           WHERE user_id = ?
         `).bind(amount, amount, userId));
 
+        // Industrial Standard: Clear, detailed ledger entries
+        const desc = `Commission: ${referral.student_name} (${referral.course_name})` + 
+                    (isBonusApplied ? ` + Bonus ₹${activeBonus.bonus_amount}` : '');
+        
         statements.push(db.prepare(`
           INSERT INTO commission_ledger (user_id, type, amount, reference_id, description)
           VALUES (?, ?, ?, ?, ?)
-        `).bind(userId, distribution[i].type, amount, referralId, `Commission for ${referral.student_name} - ${referral.course_name}`));
+        `).bind(userId, isBonusApplied ? 'bonus' : distribution[i].type, amount, referralId, desc));
         
         totalDistributed += amount;
-      } else {
-        // Admin Capture: Missing level, profit stays with Admin
-        // No distribution needed, effectively increasing company margin
-        console.log(`L${i+1} missing, Admin captures share: ${amount}`);
       }
     }
 

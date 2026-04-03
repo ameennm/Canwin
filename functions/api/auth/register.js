@@ -78,9 +78,9 @@ export async function onRequestPost({ request, env }) {
     }
 
     // 4. Generate unique referral code (Unified CNWN ID)
-    const countResult = await db.prepare('SELECT COUNT(*) as count FROM users').first();
-    const nextId = (countResult.count || 0) + 1001;
-    const newReferralCode = `CNWN${nextId}`;
+    const lastUser = await db.prepare('SELECT MAX(id) as maxId FROM users').first();
+    const nextNumericId = (lastUser?.maxId || 0) + 1001; 
+    const newReferralCode = `CNWN${nextNumericId}`;
 
     // 5. Create user (always pending initially)
     await db.prepare(`
