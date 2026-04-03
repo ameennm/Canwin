@@ -12,7 +12,7 @@ export async function onRequestGet({ request, env, data }) {
   try {
     // Read from optimized user_stats table instead of calculating
     const stats = await db.prepare(`
-      SELECT s.wallet_balance, s.withdrawable_balance, s.pending_balance, s.total_points, s.total_earnings, s.direct_referrals, s.team_size, u.rank 
+      SELECT s.wallet_balance, s.withdrawable_balance, s.pending_balance, s.total_paid, s.total_points, s.total_earnings, s.direct_referrals, s.team_size, u.rank 
       FROM user_stats s 
       JOIN users u ON s.user_id = u.id 
       WHERE user_id = ?

@@ -39,17 +39,17 @@ export async function onRequestPut({ request, env, data }) {
     const batchStatements = [];
     batchStatements.push(db.prepare(`UPDATE withdraw_requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(status, id));
 
-    if (status === 'approved') {
-      // Amount is already deducted off withdrawable and sitting in pending.
-      // So on approval, we just remove it from pending and wallet_balance (Total balance).
+    if (status === 'paid') {
+      // Final step: Deduct from pending (where it was held) and from overall wallet balance.
+      // Also increment total_paid tracking.
       batchStatements.push(
-        db.prepare('UPDATE user_stats SET wallet_balance = wallet_balance - ?, pending_balance = pending_balance - ? WHERE user_id = ?')
-          .bind(wr.amount, wr.amount, wr.user_id)
+        db.prepare('UPDATE user_stats SET wallet_balance = wallet_balance - ?, pending_balance = pending_balance - ?, total_paid = total_paid + ? WHERE user_id = ?')
+          .bind(wr.amount, wr.amount, wr.amount, wr.user_id)
       );
 
-      // Ledger: Confirmed
+      // Ledger: Confirmed Payout
       batchStatements.push(
-        db.prepare(`INSERT INTO commission_ledger (user_id, type, amount, reference_id, description) VALUES (?, "admin_adjustment", 0, ?, "Approved withdrawal request")`).bind(wr.user_id, id)
+        db.prepare(`INSERT INTO commission_ledger (user_id, type, amount, reference_id, description) VALUES (?, "admin_adjustment", ?, ?, "Withdrawal marked as PAID")`).bind(wr.user_id, -wr.amount, id)
       );
 
     } else if (status === 'rejected') {
@@ -64,6 +64,8 @@ export async function onRequestPut({ request, env, data }) {
         db.prepare(`INSERT INTO commission_ledger (user_id, type, amount, reference_id, description) VALUES (?, "withdrawal_rejected", ?, ?, "Rejected withdrawal refund")`).bind(wr.user_id, wr.amount, id)
       );
     }
+    // Note: status === 'approved' just updates the status in the first statement, 
+    // keeping the funds in pending_balance until 'paid' is clicked.
 
     await db.batch(batchStatements);
 

@@ -36,12 +36,14 @@ export async function onRequestPost({ request, env, data }) {
         .bind(data.user.id, admission_id)
     );
 
-    // 5. Calculate Pool and Distribute
-    const poolAmount = (course.course_price * course.commission_pool_percentage) / 100;
-    
-    // Level Percentages matching spec exact exactly
-    // Level 1 = 46.7%, Level 2 = 26.7%, Level 3 = 13.3%, Level 4 = 6.7%, Level 5 = 6.6% (Adjusted to exactly 100%)
-    const levelPercentages = [46.7, 26.7, 13.3, 6.7, 6.6]; 
+    // 5. Setup for Distribution (Dynamic Level Payouts)
+    const levelPayouts = [
+      course.level_1_payout || 0,
+      course.level_2_payout || 0,
+      course.level_3_payout || 0,
+      course.level_4_payout || 0,
+      course.level_5_payout || 0
+    ];
 
     // Check for active bonus
     const now = new Date().toISOString();
@@ -60,8 +62,7 @@ export async function onRequestPost({ request, env, data }) {
         const user = await db.prepare('SELECT rank, points FROM users WHERE id = ?').bind(userId).first();
         if (!user) continue;
 
-        const percentage = levelPercentages[i];
-        let amount = (poolAmount * percentage) / 100;
+        let amount = levelPayouts[i];
         let type = `commission_level_${i+1}`;
 
         // Apply bonus to Level 1 (Direct Referrer) only

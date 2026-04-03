@@ -39,7 +39,8 @@ export default function AdminDashboard({ showToast }) {
     const [editingCourse, setEditingCourse] = useState(null);
     const [courseForm, setCourseForm] = useState({ 
         name: '', description: '', course_type: 'paid', points: 10, 
-        promoter_referral_points: 50, second_level_points: 5, price: 0, is_active: true 
+        level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0,
+        price: 0, is_active: true 
     });
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
     const [editingUser, setEditingUser] = useState(null);
@@ -50,6 +51,12 @@ export default function AdminDashboard({ showToast }) {
     const [newUserForm, setNewUserForm] = useState({ name: '', phone: '', email: '', password: '', rank: 'JSO' });
     const [showBonusModal, setShowBonusModal] = useState(false);
     const [bonusForm, setBonusForm] = useState({ course_id: '', bonus_amount: 0, start_time: '', end_time: '', eligible_roles: 'ALL' });
+    
+    // New Edit States
+    const [showEditUserModal, setShowEditUserModal] = useState(false);
+    const [editUserForm, setEditUserForm] = useState({ id: '', name: '', phone: '', email: '', rank: '', status: '', password: '' });
+    const [showEditAdmissionModal, setShowEditAdmissionModal] = useState(false);
+    const [editAdmissionForm, setEditAdmissionForm] = useState({ id: '', student_name: '', student_phone: '', course_id: '' });
 
     const getMonthName = (monthIndex) => {
         return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][monthIndex];
@@ -151,6 +158,74 @@ export default function AdminDashboard({ showToast }) {
         finally { setLoadingDetails(false); }
     };
 
+    const handleEditUser = (promoter) => {
+        setEditUserForm({
+            id: promoter.id,
+            name: promoter.name,
+            phone: promoter.phone,
+            email: promoter.email || '',
+            rank: promoter.rank,
+            status: promoter.status,
+            password: ''
+        });
+        setShowEditUserModal(true);
+    };
+
+    const handleSaveUserEdit = async () => {
+        if (!editUserForm.name || !editUserForm.phone) {
+            showToast('Name and Phone are required', 'error');
+            return;
+        }
+        setActionLoading('user-edit');
+        try {
+            await api.admin.updateUser(editUserForm.id, {
+                name: editUserForm.name,
+                phone: editUserForm.phone,
+                email: editUserForm.email,
+                rank: editUserForm.rank,
+                status: editUserForm.status,
+                password: editUserForm.password || undefined
+            });
+            showToast('User updated successfully');
+            setShowEditUserModal(false);
+            setSelectedPromoter(null);
+            fetchData();
+        } catch (err) {
+            showToast(err.message || 'Error updating user', 'error');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleEditAdmission = (admission) => {
+        setEditAdmissionForm({
+            id: admission.id,
+            student_name: admission.student_name,
+            student_phone: admission.student_phone,
+            course_id: admission.course_id
+        });
+        setShowEditAdmissionModal(true);
+    };
+
+    const handleSaveAdmissionEdit = async () => {
+        setActionLoading('admission-edit');
+        try {
+            await api.admin.updateAdmission(editAdmissionForm.id, {
+                student_name: editAdmissionForm.student_name,
+                student_phone: editAdmissionForm.student_phone,
+                course_id: editAdmissionForm.course_id
+            });
+            showToast('Admission updated successfully');
+            setShowEditAdmissionModal(false);
+            setSelectedStudent(null);
+            fetchData();
+        } catch (err) {
+            showToast(err.message || 'Error updating admission', 'error');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
     const handleApproveUser = async (userId) => {
         setActionLoading(userId);
         try {
@@ -230,22 +305,6 @@ export default function AdminDashboard({ showToast }) {
         finally { setActionLoading(null); }
     };
 
-    const handleEditUser = (user) => {
-        setEditingUser(user.id);
-        setEditForm({ full_name: user.full_name, whatsapp_number: user.whatsapp_number, total_points: user.total_points || 0, is_approved: user.is_approved });
-    };
-
-    const handleUpdateUser = async (userId) => {
-        setActionLoading(userId);
-        try {
-            // Placeholder: update user endpoint
-            // await api.admin.updateUser(userId, { ...editForm });
-            showToast('Updated!');
-            setEditingUser(null);
-            fetchData();
-        } catch (err) { showToast('Failed to update', 'error'); }
-        finally { setActionLoading(null); }
-    };
 
     const handleDeleteUser = async (userId, name) => {
         if (!confirm(`Delete ${name}? This will delete all their referrals.`)) return;
@@ -268,7 +327,12 @@ export default function AdminDashboard({ showToast }) {
             const courseData = {
                 course_name: courseForm.name,
                 price: parseFloat(courseForm.price) || 0,
-                points: parseFloat(courseForm.points) || undefined // Server sets default if undefined
+                points: parseFloat(courseForm.points) || undefined,
+                level_1_payout: parseFloat(courseForm.level_1_payout) || 0,
+                level_2_payout: parseFloat(courseForm.level_2_payout) || 0,
+                level_3_payout: parseFloat(courseForm.level_3_payout) || 0,
+                level_4_payout: parseFloat(courseForm.level_4_payout) || 0,
+                level_5_payout: parseFloat(courseForm.level_5_payout) || 0
             };
             if (editingCourse) {
                 await api.courses.update(editingCourse.id, courseData);
@@ -278,7 +342,7 @@ export default function AdminDashboard({ showToast }) {
             showToast('Course saved!');
             setShowCourseModal(false);
             setEditingCourse(null);
-            setCourseForm({ name: '', description: '', course_type: 'paid', points: 10, price: 0, is_active: true });
+            setCourseForm({ name: '', description: '', course_type: 'paid', points: 10, level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0, price: 0, is_active: true });
             fetchData();
         } catch (err) { showToast('Failed to save course', 'error'); }
         finally { setActionLoading(null); }
@@ -379,7 +443,7 @@ export default function AdminDashboard({ showToast }) {
                 <div className="tabs-container">
                     {[
                         { id: 'analytics', icon: BarChart3, label: 'Analytics' },
-                        { id: 'promoters', icon: Megaphone, label: 'Promoters', badge: allPromoters.filter(p => p.status === 'approved').length },
+                        { id: 'promoters', icon: Megaphone, label: 'Promoters', badge: allPromoters.filter(p => p.status === 'active' || p.status === 'approved' || p.rank === 'Super Admin').length },
                         { id: 'students', icon: GraduationCap, label: 'Students', badge: stats.totalStudents },
                         { id: 'finance', icon: DollarSign, label: 'Finance', badge: withdrawals.filter(w => w.status === 'pending').length, highlight: withdrawals.some(w => w.status === 'pending') },
                         { id: 'approvals', icon: UserCheck, label: 'Approvals', badge: pendingPromoters.length, highlight: pendingPromoters.length > 0 },
@@ -494,39 +558,49 @@ export default function AdminDashboard({ showToast }) {
                                 <Plus className="w-4 h-4" /> Create User
                             </button>
                         </div>
-                        {filterPromoters(allPromoters.filter(p => p.status === 'approved')).length === 0 ? (
+                        {filterPromoters(allPromoters.filter(p => p.status === 'active' || p.status === 'approved' || p.rank === 'Super Admin')).length === 0 ? (
                             <div className="card text-center py-8"><Megaphone className="w-10 h-10 text-teal-400 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No promoters found</p></div>
                         ) : (
-                            <div className="table-container card p-0 overflow-hidden">
-                                <table className="data-table">
-                                    <thead><tr><th>Promoter</th><th>ID</th><th>Referred By</th><th>Points</th><th>Team</th><th>Level</th><th></th></tr></thead>
-                                    <tbody>
-                                        {filterPromoters(allPromoters.filter(p => p.status === 'approved')).map(p => {
-                                            const referrer = getReferrerName(p);
-                                            return (
-                                                <tr key={p.id} className="cursor-pointer" onClick={() => fetchPromoterDetails(p)}>
-                                                    <td><div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}><User className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></div><span className="font-medium">{p.name}</span></div></td>
-                                                    <td><span className="text-teal-400 font-mono text-sm">{p.referral_code}</span></td>
-                                                    <td>
-                                                        {referrer ? (
-                                                            <span className="text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-400">
-                                                                <Link2 className="w-3 h-3 inline mr-1" />{referrer.referral_code || referrer.name}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Direct</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="font-semibold text-amber-400">{p.total_points || 0}</td>
-                                                    <td>
-                                                        <span className="text-green-400">{p.direct_referrals || 0} Dir</span> / <span className="text-amber-400">{p.team_size || 0} Total</span>
-                                                    </td>
-                                                    <td><LevelBadge level={p.rank} size="sm" /></td>
-                                                    <td><ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                            <div className="cards-grid">
+                                {filterPromoters(allPromoters.filter(p => p.status === 'active' || p.status === 'approved' || p.rank === 'Super Admin')).map(p => {
+                                    const referrer = getReferrerName(p);
+                                    return (
+                                        <div key={p.id} className="card cursor-pointer hover:border-teal-500/30 transition-all group" onClick={() => fetchPromoterDetails(p)}>
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-teal-500/10">
+                                                        <User className="w-5 h-5 text-teal-400" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{p.name}</h3>
+                                                        <p className="text-xs font-mono text-teal-400">{p.referral_code}</p>
+                                                    </div>
+                                                </div>
+                                                <LevelBadge level={p.rank} size="sm" />
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-2 py-3 border-y border-white/5 my-2">
+                                                <div>
+                                                    <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Points</p>
+                                                    <p className="font-bold text-amber-400">{p.total_points || 0}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Team Size</p>
+                                                    <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{p.team_size || 0}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex justify-between items-center text-[11px]">
+                                                <span className="flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
+                                                    {referrer ? (
+                                                        <><Link2 className="w-3 h-3" /> {referrer.referral_code}</>
+                                                    ) : 'Direct'}
+                                                </span>
+                                                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" style={{ color: 'var(--text-muted)' }} />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -539,22 +613,38 @@ export default function AdminDashboard({ showToast }) {
                         {filterStudents(allStudents).length === 0 ? (
                             <div className="card text-center py-8"><GraduationCap className="w-10 h-10 text-purple-400 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No students found</p></div>
                         ) : (
-                            <div className="table-container card p-0 overflow-hidden">
-                                <table className="data-table">
-                                    <thead><tr><th>Student</th><th>Contact</th><th>Course</th><th>Referred By</th><th>Date</th><th>Status</th></tr></thead>
-                                    <tbody>
-                                        {filterStudents(allStudents).map(s => (
-                                            <tr key={s.id} className="cursor-pointer" onClick={() => fetchStudentDetails(s)}>
-                                                <td className="font-medium">{s.student_name}</td>
-                                                <td className="text-sm">{s.student_phone}</td>
-                                                <td><span className={`badge text-xs ${s.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>{s.course_name}</span></td>
-                                                <td><span className="text-teal-400">{s.admitted_by_name}</span></td>
-                                                <td className="text-sm">{formatDate(s.created_at)}</td>
-                                                <td><span className={`text-xs px-2 py-1 rounded ${s.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>{s.status}</span></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div className="cards-grid">
+                                {filterStudents(allStudents).map(s => (
+                                    <div key={s.id} className="card cursor-pointer hover:border-purple-500/30 transition-all group" onClick={() => fetchStudentDetails(s)}>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{s.student_name}</h3>
+                                                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{s.student_phone}</p>
+                                            </div>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${s.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                                {s.status}
+                                            </span>
+                                        </div>
+                                        
+                                        <div className="space-y-2 mb-3">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Course</span>
+                                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${s.course_type === 'paid' ? 'bg-amber-500/10 text-amber-400' : 'bg-green-500/10 text-green-400'}`}>
+                                                    {s.course_name}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Referred By</span>
+                                                <span className="text-xs font-semibold text-teal-400">{s.admitted_by_name}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                                            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{formatDate(s.created_at)}</span>
+                                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" style={{ color: 'var(--text-muted)' }} />
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
@@ -626,21 +716,46 @@ export default function AdminDashboard({ showToast }) {
                 {/* Courses Tab */}
                 {activeTab === 'courses' && (
                     <div className="space-y-4">
-                        <button onClick={() => { setEditingCourse(null); setCourseForm({ name: '', description: '', course_type: 'free', points: 10, promoter_referral_points: 50, second_level_points: 5, price: 0, is_active: true }); setShowCourseModal(true); }} className="btn-primary flex items-center gap-2"><Plus className="w-5 h-5" />Add Course</button>
+                        <button onClick={() => { setEditingCourse(null); setCourseForm({ name: '', description: '', course_type: 'paid', points: 10, level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0, price: 0, is_active: true }); setShowCourseModal(true); }} className="btn-primary flex items-center gap-2"><Plus className="w-5 h-5" />Add Course</button>
                         <div className="cards-grid">
                             {courses.map(c => (
-                                <div key={c.id} className="card">
-                                    <div className="flex justify-between items-start mb-2"><h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{c.name}</h4><span className={`badge text-xs ${c.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>{c.course_type === 'paid' ? `₹${c.price}` : 'Free'}</span></div>
+                                <div key={c.id} className="card hover:border-teal-500/30 transition-all">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h4 className="font-semibold text-lg" style={{ color: 'var(--text-primary)' }}>{c.name}</h4>
+                                        <span className={`badge text-xs ${c.course_type === 'paid' ? 'badge-paid' : 'badge-free'}`}>
+                                            {c.course_type === 'paid' ? `₹${c.price}` : 'Free'}
+                                        </span>
+                                    </div>
                                     <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{c.description || 'No description'}</p>
-                                    <div className="space-y-1 mb-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                                        <p>Student Referral: <span className="text-teal-400 font-semibold">+{c.points} pts</span></p>
-                                        <p>Promoter Referral: <span className="text-purple-400 font-semibold">+{c.promoter_referral_points || 0} pts</span></p>
+                                    <div className="grid grid-cols-2 gap-2 mb-3 p-2 rounded-lg text-xs" style={{ background: 'var(--hover-bg)' }}>
+                                        <div><span style={{ color: 'var(--text-muted)' }}>L1 Payout:</span> <span className="text-green-400 font-bold ml-1">₹{c.level_1_payout}</span></div>
+                                        <div><span style={{ color: 'var(--text-muted)' }}>Reward:</span> <span className="text-teal-400 font-bold ml-1">{c.points} pts</span></div>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className={`text-xs ${c.status === 'active' ? 'text-green-400' : 'text-red-400'}`}>{c.status === 'active' ? 'Active' : 'Inactive'}</span>
+                                        <span className={`text-xs font-semibold ${c.status === 'active' ? 'text-green-400' : 'text-red-400'}`}>
+                                            {c.status.toUpperCase()}
+                                        </span>
                                         <div className="flex gap-2 items-center">
-                                            <button onClick={() => { setEditingCourse(c); setCourseForm({ name: c.name, description: c.description || '', course_type: c.course_type, points: c.points || 10, promoter_referral_points: c.promoter_referral_points || 50, price: c.price || 0, is_active: c.status === 'active' }); setShowCourseModal(true); }} style={{ color: 'var(--text-secondary)' }}><Edit2 className="w-4 h-4" /></button>
-                                            <button onClick={() => handleDeleteCourse(c.id, c.name)} disabled={actionLoading === `del-c-${c.id}`} style={{ color: 'var(--text-secondary)' }}>{actionLoading === `del-c-${c.id}` ? <Spinner size="sm" /> : <Trash2 className="w-4 h-4" />}</button>
+                                            <button onClick={() => { 
+                                                setEditingCourse(c); 
+                                                setCourseForm({ 
+                                                    name: c.name, 
+                                                    description: c.description || '', 
+                                                    course_type: c.course_type, 
+                                                    points: c.points || 10, 
+                                                    level_1_payout: c.level_1_payout || 0,
+                                                    level_2_payout: c.level_2_payout || 0,
+                                                    level_3_payout: c.level_3_payout || 0,
+                                                    level_4_payout: c.level_4_payout || 0,
+                                                    level_5_payout: c.level_5_payout || 0,
+                                                    price: c.price || 0, 
+                                                    is_active: c.status === 'active' 
+                                                }); 
+                                                setShowCourseModal(true); 
+                                            }} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}><Edit2 className="w-4 h-4" /></button>
+                                            <button onClick={() => handleDeleteCourse(c.id, c.name)} disabled={actionLoading === `del-c-${c.id}`} className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400" style={{ color: 'var(--text-secondary)' }}>
+                                                {actionLoading === `del-c-${c.id}` ? <Spinner size="sm" /> : <Trash2 className="w-4 h-4" />}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -706,58 +821,56 @@ export default function AdminDashboard({ showToast }) {
                     </div>
                 )}
                 {activeTab === 'finance' && (
-                    <div className="card">
-                        <div className="flex justify-between items-center mb-4">
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
                             <h3 className="font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><Wallet className="w-5 h-5 text-teal-400" />Withdrawal Requests</h3>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="text-xs uppercase" style={{ color: 'var(--text-muted)' }}>
-                                    <tr>
-                                        <th className="px-4 py-3">Promoter</th>
-                                        <th className="px-4 py-3">Amount</th>
-                                        <th className="px-4 py-3">Date</th>
-                                        <th className="px-4 py-3">Status</th>
-                                        <th className="px-4 py-3 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y" style={{ borderColor: 'var(--border-color)' }}>
-                                    {withdrawals.length === 0 ? (
-                                        <tr><td colSpan="5" className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>No withdrawal requests found</td></tr>
-                                    ) : withdrawals.map(w => (
-                                        <tr key={w.id} className="hover:bg-white/5 transition-colors">
-                                            <td className="px-4 py-4">
-                                                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{w.user_name}</p>
+                        {withdrawals.length === 0 ? (
+                            <div className="card text-center py-8"><Clock className="w-10 h-10 text-teal-400 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No withdrawal requests found</p></div>
+                        ) : (
+                            <div className="cards-grid">
+                                {withdrawals.map(w => (
+                                    <div key={w.id} className="card">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{w.user_name}</h3>
                                                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{w.user_phone}</p>
-                                            </td>
-                                            <td className="px-4 py-4 font-bold text-emerald-500">₹{w.amount}</td>
-                                            <td className="px-4 py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>{formatDate(w.created_at)}</td>
-                                            <td className="px-4 py-4">
-                                                <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${
-                                                    w.status === 'approved' ? 'bg-green-500/20 text-green-400' :
-                                                    w.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
-                                                    'bg-amber-500/20 text-amber-400'
-                                                }`}>
-                                                    {w.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-4 text-right">
-                                                {w.status === 'pending' && (
-                                                    <div className="flex justify-end gap-2">
-                                                        <button onClick={() => handleUpdateWithdrawal(w.id, 'approved')} disabled={actionLoading === `wd-${w.id}`} className="w-8 h-8 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/40 flex items-center justify-center transition-colors">
-                                                            {actionLoading === `wd-${w.id}` ? <Spinner size="xs" /> : <CheckCircle className="w-4 h-4" />}
-                                                        </button>
-                                                        <button onClick={() => handleUpdateWithdrawal(w.id, 'rejected')} disabled={actionLoading === `wd-${w.id}`} className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 flex items-center justify-center transition-colors">
-                                                            {actionLoading === `wd-${w.id}` ? <Spinner size="xs" /> : <XCircle className="w-4 h-4" />}
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                            </div>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                                                w.status === 'paid' ? 'bg-green-500/20 text-green-400' :
+                                                w.status === 'approved' ? 'bg-blue-500/20 text-blue-400' :
+                                                w.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
+                                                'bg-amber-500/20 text-amber-400'
+                                            }`}>
+                                                {w.status}
+                                            </span>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center py-3 border-y border-white/5 my-2">
+                                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Amount Requested</span>
+                                            <span className="text-lg font-bold text-emerald-500">₹{w.amount}</span>
+                                        </div>
+
+                                        <p className="text-[10px] mb-3" style={{ color: 'var(--text-muted)' }}>Requested: {formatDate(w.created_at)}</p>
+
+                                        <div className="flex gap-2">
+                                            {w.status === 'pending' && (
+                                                <>
+                                                    <button onClick={() => handleUpdateWithdrawal(w.id, 'approved')} disabled={actionLoading === `wd-${w.id}`} className="btn-primary py-2 text-xs flex-1">Approve</button>
+                                                    <button onClick={() => handleUpdateWithdrawal(w.id, 'rejected')} disabled={actionLoading === `wd-${w.id}`} className="btn-secondary py-2 text-xs border-red-500/30 text-red-400">Reject</button>
+                                                </>
+                                            )}
+                                            {w.status === 'approved' && (
+                                                <button onClick={() => handleUpdateWithdrawal(w.id, 'paid')} disabled={actionLoading === `wd-${w.id}`} className="btn-success py-2 text-xs flex-1">Mark as PAID</button>
+                                            )}
+                                            {w.status === 'paid' && (
+                                                <div className="text-center w-full py-2 text-[10px] font-bold text-green-400 bg-green-500/10 rounded-lg">TRANSACTION SETTLED</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -767,7 +880,18 @@ export default function AdminDashboard({ showToast }) {
                     <div className="modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Student Details</h3>
-                            <button onClick={() => setSelectedStudent(null)}><X className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} /></button>
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={() => handleEditAdmission(selectedStudent)}
+                                    className="p-2 rounded-lg bg-teal-500/10 text-teal-400 hover:bg-teal-500/20"
+                                    title="Edit Student Info"
+                                >
+                                    <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => setSelectedStudent(null)} className="p-2 rounded-lg hover:bg-white/5">
+                                    <X className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+                                </button>
+                            </div>
                         </div>
                         <div className="p-4 rounded-xl mb-4" style={{ background: 'var(--hover-bg)' }}>
                             <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{selectedStudent.student_name}</p>
@@ -796,7 +920,18 @@ export default function AdminDashboard({ showToast }) {
                     <div className="modal-content" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Promoter Details</h3>
-                            <button onClick={() => setSelectedPromoter(null)}><X className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} /></button>
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={() => handleEditUser(selectedPromoter)}
+                                    className="p-2 rounded-lg bg-teal-500/10 text-teal-400 hover:bg-teal-500/20"
+                                    title="Edit Credentials"
+                                >
+                                    <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => setSelectedPromoter(null)} className="p-2 rounded-lg hover:bg-white/5">
+                                    <X className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Promoter Info */}
@@ -819,45 +954,61 @@ export default function AdminDashboard({ showToast }) {
                                     </p>
                                 )}
                             </div>
+                                      {/* Financial Stats */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                            <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
+                                <p className="text-[10px] uppercase font-bold text-green-400 mb-1">Total Earned</p>
+                                <p className="text-xl font-black text-green-400">₹{selectedPromoter.total_earnings || 0}</p>
+                            </div>
+                            <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center">
+                                <p className="text-[10px] uppercase font-bold text-blue-400 mb-1">Total Paid</p>
+                                <p className="text-xl font-black text-blue-400">₹{selectedPromoter.total_paid || 0}</p>
+                            </div>
+                            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
+                                <p className="text-[10px] uppercase font-bold text-amber-400 mb-1">Wallet (Bal)</p>
+                                <p className="text-xl font-black text-amber-400">₹{selectedPromoter.wallet_balance || 0}</p>
+                            </div>
+                            <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-center">
+                                <p className="text-[10px] uppercase font-bold text-purple-400 mb-1">Team Size</p>
+                                <p className="text-xl font-black text-purple-400">{selectedPromoter.team_size || 0}</p>
+                            </div>
                         </div>
 
-                        {/* Contact Details */}
-                        <div className="grid grid-cols-2 gap-3 mb-4">
-                            <div className="p-3 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Phone className="w-4 h-4 text-teal-400" />
-                                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Phone</span>
-                                </div>
-                                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{selectedPromoter.phone}</p>
-                            </div>
-                            <div className="p-3 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <CreditCard className="w-4 h-4 text-purple-400" />
-                                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Role</span>
-                                </div>
-                                <p className="font-mono text-sm" style={{ color: 'var(--text-primary)' }}>{selectedPromoter.role}</p>
-                            </div>
-                        </div>
-
-                        {/* Stats */}
-                        <div className="grid grid-cols-4 gap-2 mb-4">
-                            <div className="text-center p-2 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
-                                <p className="font-bold text-teal-400">{promoterReferrals.length}</p>
-                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Students</p>
-                            </div>
-                            <div className="text-center p-2 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
-                                <p className="font-bold text-green-400">{promoterReferrals.filter(r => r.status === 'approved').length}</p>
-                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Approved</p>
-                            </div>
-                            <div className="text-center p-2 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
-                                <p className="font-bold text-amber-400">{promoterReferrals.filter(r => r.status === 'pending').length}</p>
-                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Pending</p>
-                            </div>
-                            <div className="text-center p-2 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
-                                <p className="font-bold text-purple-400">{promoterReferredPromoters.length}</p>
-                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Promoters</p>
+                        {/* Hierarchy Tracking */}
+                        <div className="p-4 rounded-xl mb-4 border border-white/5" style={{ background: 'var(--hover-bg)' }}>
+                            <h4 className="text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
+                                <TrendingUp className="w-4 h-4" /> Upline Hierarchy (Lineage)
+                            </h4>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-bold px-2 py-1 bg-white/5 rounded text-teal-400">CORE</span>
+                                {(() => {
+                                    try {
+                                        const chain = typeof selectedPromoter.upline_chain === 'string' 
+                                            ? JSON.parse(selectedPromoter.upline_chain) 
+                                            : selectedPromoter.upline_chain || [];
+                                        
+                                        // Reverse so it's top-down: [Highest Admin, ..., Direct Referrer]
+                                        const displayChain = [...chain].reverse();
+                                        
+                                        return displayChain.map((uId, idx) => (
+                                            <React.Fragment key={uId}>
+                                                <ChevronRight className="w-3 h-3 text-white/20" />
+                                                <span className="text-xs px-2 py-1 bg-white/5 rounded font-mono text-purple-400" title={`User ID: ${uId}`}>
+                                                    {uId}
+                                                </span>
+                                            </React.Fragment>
+                                        ));
+                                    } catch (e) {
+                                        return <span className="text-xs italic text-white/40">Direct Entry</span>;
+                                    }
+                                })()}
+                                <ChevronRight className="w-3 h-3 text-white/20" />
+                                <span className="text-xs px-2 py-1 bg-teal-500/20 rounded font-bold text-teal-400 ring-1 ring-teal-500/50">
+                                    {selectedPromoter.name} (YOU)
+                                </span>
                             </div>
                         </div>
+              </div>
 
                         {/* Promoters Referred by this promoter */}
                         {promoterReferredPromoters.length > 0 && (
@@ -877,8 +1028,8 @@ export default function AdminDashboard({ showToast }) {
                                                 <p className="text-xs text-teal-400">{p.referral_code || 'Pending ID'}</p>
                                             </div>
                                             <div className="text-right">
-                                                <span className={`text-xs px-2 py-1 rounded ${p.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                                                    {p.status === 'approved' ? 'Active' : 'Pending'}
+                                                <span className={`text-xs px-2 py-1 rounded ${p.status === 'active' || p.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                                    {p.status === 'active' || p.status === 'approved' ? 'Active' : 'Pending'}
                                                 </span>
                                             </div>
                                         </div>
@@ -929,23 +1080,45 @@ export default function AdminDashboard({ showToast }) {
                             <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Course Type</label><select value={courseForm.course_type} onChange={e => setCourseForm({ ...courseForm, course_type: e.target.value })} className="input-field"><option value="free">Free</option><option value="paid">Paid</option></select></div>
                             {courseForm.course_type === 'paid' && <div><label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Price (₹)</label><input type="number" value={courseForm.price} onChange={e => setCourseForm({ ...courseForm, price: e.target.value })} className="input-field" placeholder="0" /></div>}
 
-                            <div className="p-4 rounded-xl" style={{ background: 'var(--hover-bg)' }}>
-                                <h4 className="font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                    <Zap className="w-4 h-4 text-amber-400" />
-                                    Points Configuration
+                            <div className="p-4 rounded-xl space-y-4" style={{ background: 'var(--hover-bg)' }}>
+                                <h4 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                    <DollarSign className="w-4 h-4 text-green-400" />
+                                    Commission & Points
                                 </h4>
-                                <div className="space-y-3">
+                                
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Student Referral Points</label>
-                                        <input type="number" step="0.01" value={courseForm.points} onChange={e => setCourseForm({ ...courseForm, points: e.target.value })} className="input-field" placeholder="10.5" />
-                                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Points earned when a promoter refers a student to this course (decimals allowed)</p>
+                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 1 Payout (₹)</label>
+                                        <input type="number" value={courseForm.level_1_payout} onChange={e => setCourseForm({ ...courseForm, level_1_payout: e.target.value })} className="input-field py-2" />
                                     </div>
                                     <div>
-                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Promoter Referral Points</label>
-                                        <input type="number" step="0.01" value={courseForm.promoter_referral_points} onChange={e => setCourseForm({ ...courseForm, promoter_referral_points: e.target.value })} className="input-field" placeholder="50.5" />
-                                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Points when a promoter refers another promoter (decimals allowed)</p>
+                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Student Points</label>
+                                        <input type="number" step="0.5" value={courseForm.points} onChange={e => setCourseForm({ ...courseForm, points: e.target.value })} className="input-field py-2" />
                                     </div>
                                 </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 2 Payout (₹)</label>
+                                        <input type="number" value={courseForm.level_2_payout} onChange={e => setCourseForm({ ...courseForm, level_2_payout: e.target.value })} className="input-field py-2" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 3 Payout (₹)</label>
+                                        <input type="number" value={courseForm.level_3_payout} onChange={e => setCourseForm({ ...courseForm, level_3_payout: e.target.value })} className="input-field py-2" />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 4 Payout (₹)</label>
+                                        <input type="number" value={courseForm.level_4_payout} onChange={e => setCourseForm({ ...courseForm, level_4_payout: e.target.value })} className="input-field py-2" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Level 5 Payout (₹)</label>
+                                        <input type="number" value={courseForm.level_5_payout} onChange={e => setCourseForm({ ...courseForm, level_5_payout: e.target.value })} className="input-field py-2" />
+                                    </div>
+                                </div>
+                                <p className="text-[10px] italic" style={{ color: 'var(--text-muted)' }}>Specify exact monetary amounts for each upline level. Points are awarded to Level 1 only.</p>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -1020,6 +1193,76 @@ export default function AdminDashboard({ showToast }) {
                                     {actionLoading === 'bonus-save' ? <Spinner size="sm" /> : 'Start Campaign'}
                                 </button>
                                 <button onClick={() => setShowBonusModal(false)} className="btn-secondary flex-1">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit User Modal */}
+            {showEditUserModal && (
+                <div className="modal-overlay" onClick={() => setShowEditUserModal(false)}>
+                    <div className="modal-content" style={{ maxWidth: '450px' }} onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Edit Promoter Credentials</h3>
+                        <div className="space-y-4">
+                            <div><label className="block text-sm mb-1">Full Name</label><input type="text" value={editUserForm.name} onChange={e => setEditUserForm({ ...editUserForm, name: e.target.value })} className="input-field" /></div>
+                            <div><label className="block text-sm mb-1">Login Phone (WhatsApp)</label><input type="text" value={editUserForm.phone} onChange={e => setEditUserForm({ ...editUserForm, phone: e.target.value })} className="input-field" /></div>
+                            <div><label className="block text-sm mb-1">Email</label><input type="email" value={editUserForm.email} onChange={e => setEditUserForm({ ...editUserForm, email: e.target.value })} className="input-field" /></div>
+                            <div>
+                                <label className="block text-sm mb-1">Update Password</label>
+                                <input type="password" value={editUserForm.password} onChange={e => setEditUserForm({ ...editUserForm, password: e.target.value })} className="input-field" placeholder="Leave blank to keep current" />
+                                <p className="text-[10px] mt-1 text-amber-400/60 italic">Setting a new password will immediately change their login credentials.</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm mb-1">Rank</label>
+                                    <select value={editUserForm.rank} onChange={e => setEditUserForm({ ...editUserForm, rank: e.target.value })} className="input-field">
+                                        <option value="Junior Sales Officer">JSO</option>
+                                        <option value="Sales Officer">SO</option>
+                                        <option value="Sales Officer Premium">SOP</option>
+                                        <option value="Senior Development Officer">SDO</option>
+                                        <option value="Platinum Leader">Platinum</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm mb-1">Status</label>
+                                    <select value={editUserForm.status} onChange={e => setEditUserForm({ ...editUserForm, status: e.target.value })} className="input-field">
+                                        <option value="active">Active</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="suspended">Suspended</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <button onClick={handleSaveUserEdit} disabled={actionLoading === 'user-edit'} className="btn-primary flex-1">
+                                    {actionLoading === 'user-edit' ? <Spinner size="sm" /> : 'Save Changes'}
+                                </button>
+                                <button onClick={() => setShowEditUserModal(false)} className="btn-secondary flex-1">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Admission Modal */}
+            {showEditAdmissionModal && (
+                <div className="modal-overlay" onClick={() => setShowEditAdmissionModal(false)}>
+                    <div className="modal-content" style={{ maxWidth: '450px' }} onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Edit Student Info</h3>
+                        <div className="space-y-4">
+                            <div><label className="block text-sm mb-1">Student Name</label><input type="text" value={editAdmissionForm.student_name} onChange={e => setEditAdmissionForm({ ...editAdmissionForm, student_name: e.target.value })} className="input-field" /></div>
+                            <div><label className="block text-sm mb-1">WhatsApp Number</label><input type="text" value={editAdmissionForm.student_phone} onChange={e => setEditAdmissionForm({ ...editAdmissionForm, student_phone: e.target.value })} className="input-field" /></div>
+                            <div>
+                                <label className="block text-sm mb-1">Course</label>
+                                <select value={editAdmissionForm.course_id} onChange={e => setEditAdmissionForm({ ...editAdmissionForm, course_id: e.target.value })} className="input-field">
+                                    {courses.map(c => <option key={c.course_id} value={c.course_id}>{c.course_name} (₹{c.price})</option>)}
+                                </select>
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <button onClick={handleSaveAdmissionEdit} disabled={actionLoading === 'admission-edit'} className="btn-primary flex-1">
+                                    {actionLoading === 'admission-edit' ? <Spinner size="sm" /> : 'Save Changes'}
+                                </button>
+                                <button onClick={() => setShowEditAdmissionModal(false)} className="btn-secondary flex-1">Cancel</button>
                             </div>
                         </div>
                     </div>

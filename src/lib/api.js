@@ -63,10 +63,11 @@ export const api = {
     getWithdrawals: () => request('/admin/withdrawals'),
     updateWithdrawal: (id, status) => request('/admin/withdrawals', { method: 'PUT', body: JSON.stringify({ id, status }) }),
     updateUser: (userId, data) => request(`/admin/users/${userId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    updateAdmission: (admissionId, data) => request(`/admin/admissions/${admissionId}`, { method: 'PUT', body: JSON.stringify(data) }),
     seed: () => request('/admin/seed', { method: 'POST' }),
     admissions: {
-        approve: (admissionId) => request(`/admin/admissions/approve`, { method: 'POST', body: JSON.stringify({ admissionId }) }),
-        reject: (admissionId) => request(`/admin/admissions/reject`, { method: 'POST', body: JSON.stringify({ admissionId }) })
+        approve: (admission_id) => request(`/admin/admissions/approve`, { method: 'POST', body: JSON.stringify({ admission_id }) }),
+        reject: (admission_id) => request(`/admin/admissions/reject`, { method: 'POST', body: JSON.stringify({ admission_id }) })
     }
   }
 };

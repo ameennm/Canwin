@@ -90,7 +90,7 @@ export default function MyAdmissionsPage({ showToast }) {
                     </div>
                 </div>
 
-                {/* List */}
+                {/* Card List (Mobile-First) */}
                 {filterAdmissions(admissions).length === 0 ? (
                     <div className="card text-center py-10">
                         <BookOpen className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
@@ -98,43 +98,38 @@ export default function MyAdmissionsPage({ showToast }) {
                         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Start referring students to see them here.</p>
                     </div>
                 ) : (
-                    <div className="table-container card p-0 overflow-hidden">
-                        <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Student</th>
-                                    <th>Course</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filterAdmissions(admissions).map(a => (
-                                    <tr key={a.id}>
-                                        <td>
-                                            <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{a.student_name}</p>
-                                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{a.student_phone}</p>
-                                        </td>
-                                        <td>
-                                            <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{a.course_name}</p>
-                                            <p className="text-xs text-teal-400">+{a.points_earned || 0} pts</p>
-                                        </td>
-                                        <td>
-                                            <span className={`text-xs px-2 py-1 rounded-full ${
-                                                a.status === 'approved' ? 'bg-green-500/20 text-green-400' :
-                                                a.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
-                                                'bg-amber-500/20 text-amber-400'
-                                            }`}>
-                                                {a.status}
-                                            </span>
-                                        </td>
-                                        <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                                            {formatDate(a.created_at)}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="cards-grid">
+                        {filterAdmissions(admissions).map(a => (
+                            <div key={a.id} className="card hover:border-teal-500/30 transition-all">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{a.student_name}</h3>
+                                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{a.student_phone}</p>
+                                    </div>
+                                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                                        a.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                                        a.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
+                                        'bg-amber-500/20 text-amber-400'
+                                    }`}>
+                                        {a.status.toUpperCase()}
+                                    </span>
+                                </div>
+                                <div className="space-y-2 pt-2 border-t border-white/5">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Course</span>
+                                        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{a.course_name}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Reward</span>
+                                        <span className="text-sm font-bold text-teal-400">+{a.points_earned || 0} Points</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Date</span>
+                                        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{formatDate(a.created_at)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>
