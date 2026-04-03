@@ -15,7 +15,7 @@ export async function onRequestPost({ request, env }) {
     const hashedPassword = await hashPassword(password);
     
     // Check for 'admin' shorthand or regular phone
-    const user = await db.prepare('SELECT id, name, rank, referral_code, points, status FROM users WHERE (phone = ? OR (rank = "Super Admin" AND phone = "admin")) AND password_hash = ?')
+    const user = await db.prepare("SELECT id, name, rank, referral_code, points, status FROM users WHERE (phone = ? OR (rank = 'Super Admin' AND phone = 'admin')) AND password_hash = ?")
       .bind(phone, hashedPassword)
       .first();
 
