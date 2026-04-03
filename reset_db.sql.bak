@@ -1,0 +1,14 @@
+-- Reset DB by dropping all tables
+DROP TABLE IF EXISTS user_stats;
+DROP TABLE IF EXISTS registrations;
+DROP TABLE IF EXISTS admissions;
+DROP TABLE IF EXISTS commission_ledger;
+DROP TABLE IF EXISTS bonus_campaigns;
+DROP TABLE IF EXISTS withdraw_requests;
+DROP TABLE IF EXISTS special_offers;
+DROP TABLE IF EXISTS offers;
+DROP TABLE IF EXISTS courses;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS d1_migrations;
+DROP TABLE IF EXISTS _cf_migrations;
+
