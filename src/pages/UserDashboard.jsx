@@ -148,15 +148,15 @@ export default function UserDashboard({ showToast }) {
 
                 {/* Quick Stats Grid */}
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="card text-center">
-                        <Users className="w-5 h-5 mx-auto mb-1 text-teal-500" />
-                        <p className="text-lg font-bold">{wallet.team_size || 0}</p>
-                        <p className="text-xs text-muted-foreground">Team Size</p>
+                    <div className="card text-center py-5 border-teal-500/10 hover:border-teal-500/30 transition-all">
+                        <Users className="w-6 h-6 mx-auto mb-2 text-teal-400" />
+                        <p className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-white">{wallet.team_size || 0}</p>
+                        <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">My Team</p>
                     </div>
-                    <div className="card text-center">
-                        <Star className="w-5 h-5 mx-auto mb-1 text-amber-500" />
-                        <p className="text-lg font-bold">{wallet.direct_referrals || 0}</p>
-                        <p className="text-xs text-muted-foreground">Direct Referrals</p>
+                    <div className="card text-center py-5 border-amber-500/10 hover:border-amber-500/30 transition-all">
+                        <BookOpen className="w-6 h-6 mx-auto mb-2 text-amber-400" />
+                        <p className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-white">{wallet.total_admissions || 0}</p>
+                        <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Admissions</p>
                     </div>
                 </div>
             </main>

@@ -650,14 +650,18 @@ export default function AdminDashboard({ showToast }) {
                                                 <LevelBadge level={p.rank} size="sm" />
                                             </div>
                                             
-                                            <div className="grid grid-cols-2 gap-2 py-3 border-y border-white/5 my-2">
+                                            <div className="grid grid-cols-3 gap-1 py-3 border-y border-white/5 my-2">
                                                 <div>
-                                                    <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Points</p>
-                                                    <p className="font-bold text-amber-400">{p.total_points || 0}</p>
+                                                    <p className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Points</p>
+                                                    <p className="font-bold text-amber-400 text-sm">{p.total_points || 0}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Team Size</p>
-                                                    <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{p.team_size || 0}</p>
+                                                    <p className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Team</p>
+                                                    <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{p.team_size || 0}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Admissions</p>
+                                                    <p className="font-bold text-teal-400 text-sm">{p.total_admissions || 0}</p>
                                                 </div>
                                             </div>
 
@@ -667,7 +671,18 @@ export default function AdminDashboard({ showToast }) {
                                                         <><Link2 className="w-3 h-3" /> {referrer.referral_code}</>
                                                     ) : 'Direct'}
                                                 </span>
-                                                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" style={{ color: 'var(--text-muted)' }} />
+                                                <div className="flex items-center gap-2">
+                                                    {p.rank !== 'Super Admin' && (
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleDeleteUser(p.id, p.name); }}
+                                                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            title="Delete Promoter"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" style={{ color: 'var(--text-muted)' }} />
+                                                </div>
                                             </div>
                                         </div>
                                     );
