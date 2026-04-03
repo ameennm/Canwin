@@ -26,7 +26,8 @@ export async function onRequestPost({ request, env }) {
 
     if (user.status && user.status !== 'active') {
        console.warn(`Login blocked for phone: ${phone} (Status: ${user.status})`);
-       return new Response(JSON.stringify({ error: 'Account is suspended' }), { status: 403 });
+       const errorMsg = user.status === 'deleted' ? 'Account has been deleted' : 'Account is suspended';
+       return new Response(JSON.stringify({ error: errorMsg }), { status: 403 });
     }
 
     // Fetch user stats

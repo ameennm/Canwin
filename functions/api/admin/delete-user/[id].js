@@ -8,12 +8,8 @@ export async function onRequestDelete({ params, env, data }) {
   const db = env.DB;
 
   try {
-    // 2. Perform deletion in a batch
-    await db.batch([
-      db.prepare('DELETE FROM users WHERE id = ?').bind(userId),
-      db.prepare('DELETE FROM user_stats WHERE user_id = ?').bind(userId)
-      // Note: We keep admissions and ledger for audit history, but they will point to a non-existent user_id.
-    ]);
+    // 2. Perform Soft Deletion to preserve data integrity (Foreign Keys)
+    await db.prepare('UPDATE users SET status = "deleted" WHERE id = ?').bind(userId).run();
 
     return new Response(JSON.stringify({ message: 'User deleted successfully' }), {
       headers: { 'Content-Type': 'application/json' }

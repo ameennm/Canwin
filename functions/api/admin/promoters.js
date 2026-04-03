@@ -6,6 +6,7 @@ export async function onRequestGet({ env }) {
              s.total_earnings, s.wallet_balance, s.withdrawable_balance, s.pending_balance, s.total_paid, s.total_points, s.direct_referrals, s.team_size, s.total_admissions
       FROM users u
       LEFT JOIN user_stats s ON u.id = s.user_id
+      WHERE u.status != 'deleted'
       ORDER BY u.created_at DESC
     `).all();
 
