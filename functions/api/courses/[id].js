@@ -1,5 +1,5 @@
 import { json, error, serverError, readJson } from '../../../lib/server/http.js';
-import { COURSE_MONEY_FIELDS, toCourseStatus } from '../../../lib/server/catalog.js';
+import { COURSE_MONEY_FIELDS, toCourseStatus, payoutError } from '../../../lib/server/catalog.js';
 
 // Admin only (enforced in _middleware.js). Only the fields sent are changed.
 export async function onRequestPut({ params, request, env }) {
@@ -22,6 +22,14 @@ export async function onRequestPut({ params, request, env }) {
   if (updates.length === 0) return error('No fields to update');
 
   try {
+    // Check the course as it will be after this change.
+    const current = await env.DB.prepare('SELECT * FROM courses WHERE course_id = ?').bind(params.id).first();
+    if (!current) return error('Course not found', 404);
+    const next = { ...current };
+    updates.forEach((u, i) => { next[u.split(' = ')[0]] = values[i]; });
+    const tooHigh = payoutError(next);
+    if (tooHigh) return error(tooHigh);
+
     const result = await env.DB.prepare(`UPDATE courses SET ${updates.join(', ')} WHERE course_id = ?`).bind(...values, params.id).run();
     if (!result.meta.changes) return error('Course not found', 404);
     return json({ message: 'Course updated' });

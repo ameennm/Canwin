@@ -77,7 +77,8 @@ export const api = {
     approveUser: (userId) => request(`/admin/approve/${userId}`, { method: 'POST' }),
     deleteUser: (userId) => request(`/admin/delete-user/${userId}`, { method: 'DELETE' }),
     getWithdrawals: () => request('/admin/withdrawals'),
-    updateWithdrawal: (id, status) => request('/admin/withdrawals', { method: 'PUT', body: JSON.stringify({ id, status }) }),
+    updateWithdrawal: (id, status, extra = {}) => request('/admin/withdrawals', { method: 'PUT', body: JSON.stringify({ id, status, ...extra }) }),
+    recordPayment: (user_id, amount, note) => request('/admin/payments', { method: 'POST', body: JSON.stringify({ user_id, amount, note }) }),
     updateUser: (userId, data) => request(`/admin/users/${userId}`, { method: 'PUT', body: JSON.stringify(data) }),
     updateAdmission: (admissionId, data) => request(`/admin/admissions/${admissionId}`, { method: 'PUT', body: JSON.stringify(data) }),
     admissions: {

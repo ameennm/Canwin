@@ -122,7 +122,7 @@ export default function WithdrawPage({ showToast }) {
                     </button>
                     <div>
                         <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Withdraw Funds</h1>
-                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Request to cash out</p>
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Ask the admin to pay you</p>
                     </div>
                 </div>
 
@@ -159,7 +159,7 @@ export default function WithdrawPage({ showToast }) {
                             />
                         </div>
                         <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-                            Minimum withdrawal: ₹500. Withdrawals will be processed within 2-3 business days.
+                            Minimum ₹500. The admin pays you by UPI or bank outside this website and then marks it as paid here.
                         </p>
                     </div>
 
@@ -200,14 +200,19 @@ export default function WithdrawPage({ showToast }) {
                 {history.length > 0 && (
                     <div className="card mt-6">
                         <p className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                            <Clock className="w-4 h-4" /> Recent requests
+                            <Clock className="w-4 h-4" /> Payment history
                         </p>
                         <div className="space-y-2">
                             {history.map(w => (
                                 <div key={w.id} className="flex items-center justify-between text-sm">
                                     <div>
-                                        <p className="font-bold" style={{ color: 'var(--text-primary)' }}>₹{Number(w.amount).toLocaleString()}</p>
-                                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{new Date(w.created_at + 'Z').toLocaleDateString()}</p>
+                                        <p className="font-bold" style={{ color: 'var(--text-primary)' }}>₹{Number(w.status === 'paid' && w.paid_amount != null ? w.paid_amount : w.amount).toLocaleString()}</p>
+                                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                            {new Date((w.paid_at || w.created_at) + 'Z').toLocaleDateString()}
+                                            {w.source === 'admin' ? ' · paid by admin' : ''}
+                                            {w.status === 'paid' && w.source !== 'admin' && w.paid_amount != null && w.paid_amount !== w.amount ? ` · asked ₹${w.amount}` : ''}
+                                        </p>
+                                        {w.note && <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{w.note}</p>}
                                     </div>
                                     <span className={`px-2 py-1 rounded-lg text-xs font-semibold capitalize ${STATUS_STYLES[w.status] || ''}`}>{w.status}</span>
                                 </div>

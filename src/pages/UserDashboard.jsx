@@ -145,14 +145,20 @@ export default function UserDashboard({ showToast }) {
                         <p className="text-lg font-bold text-green-600">₹{wallet.total_earnings?.toLocaleString() || 0}</p>
                     </div>
                     <div className="card p-4 border-blue-200 bg-blue-50">
-                        <p className="text-xs text-slate-500">Withdrawable</p>
-                        <p className="text-lg font-bold text-blue-600">₹{wallet.withdrawable_balance?.toLocaleString() || 0}</p>
+                        <p className="text-xs text-slate-500">Received</p>
+                        <p className="text-lg font-bold text-blue-600">₹{(wallet.total_paid || 0).toLocaleString()}</p>
                     </div>
                     <div className="card p-4 border-amber-200 bg-amber-50">
-                        <p className="text-xs text-slate-500">Pending</p>
-                        <p className="text-lg font-bold text-amber-700">₹{wallet.pending_balance?.toLocaleString() || 0}</p>
+                        <p className="text-xs text-slate-500">To receive</p>
+                        <p className="text-lg font-bold text-amber-700">₹{((wallet.withdrawable_balance || 0) + (wallet.pending_balance || 0)).toLocaleString()}</p>
                     </div>
                 </div>
+
+                {!(wallet.own_admissions > 0) && (
+                    <div className="card border-amber-200 bg-amber-50 text-sm text-amber-700">
+                        Add your first student yourself. Until one of your own admissions is approved, you will not earn from your team's admissions.
+                    </div>
+                )}
 
                 {/* Referral Link Card */}
                 <div className="card">

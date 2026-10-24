@@ -1,5 +1,5 @@
 import { json, error, serverError, readJson, isAdmin } from '../../lib/server/http.js';
-import { COURSE_MONEY_FIELDS, toCourseStatus } from '../../lib/server/catalog.js';
+import { COURSE_MONEY_FIELDS, toCourseStatus, payoutError } from '../../lib/server/catalog.js';
 
 function money(value) {
   const n = Number(value);
@@ -16,6 +16,10 @@ export async function onRequestPost({ request, env }) {
   const points = Number.isFinite(Number(body.points)) && Number(body.points) >= 0
     ? Math.round(Number(body.points))
     : Math.round(price * 0.2);
+
+  const amounts = Object.fromEntries(COURSE_MONEY_FIELDS.map(f => [f, money(body[f])]));
+  const tooHigh = payoutError({ course_price: price, ...amounts });
+  if (tooHigh) return error(tooHigh);
 
   try {
     const result = await env.DB.prepare(`

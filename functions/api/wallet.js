@@ -15,7 +15,8 @@ export async function onRequestGet({ request, env, data }) {
     await db.prepare('INSERT OR IGNORE INTO user_stats (user_id) SELECT id FROM users WHERE id = ?').bind(userId).run();
     const stats = await db.prepare(`
       SELECT s.wallet_balance, s.withdrawable_balance, s.pending_balance, s.total_paid, u.points AS total_points,
-             s.total_earnings, s.direct_referrals, s.team_size, s.total_admissions, u.rank
+             s.total_earnings, s.direct_referrals, s.team_size, s.total_admissions, u.rank,
+             (SELECT COUNT(*) FROM admissions a WHERE a.admitted_by_user_id = u.id AND a.status = 'approved') AS own_admissions
       FROM user_stats s
       JOIN users u ON s.user_id = u.id
       WHERE s.user_id = ?
@@ -23,8 +24,8 @@ export async function onRequestGet({ request, env, data }) {
     if (!stats) return error('User not found', 404);
 
     const { results: withdrawals } = await db.prepare(`
-      SELECT id, amount, status, upi_id, bank_name, account_number, created_at, updated_at
-      FROM withdraw_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 20
+      SELECT id, amount, paid_amount, status, source, note, upi_id, bank_name, account_number, created_at, updated_at, paid_at
+      FROM withdraw_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 30
     `).bind(userId).all();
 
     return json({ ...stats, withdrawals });
