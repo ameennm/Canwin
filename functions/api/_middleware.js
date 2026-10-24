@@ -20,7 +20,10 @@ export async function onRequest(context) {
   }
 
   const token = authHeader.split(' ')[1];
-  const secret = env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+  const secret = env.JWT_SECRET;
+  if (!secret) {
+    return new Response(JSON.stringify({ error: 'Server misconfigured: JWT_SECRET is not set' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
 
   try {
     const isValid = await jwt.verify(token, secret);

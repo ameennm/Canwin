@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "vite",
     "dev:all": "npm run dev & npm run dev:backend",
-    "dev:backend": "npx wrangler pages dev ./dist --compatibility-date=2024-03-11 --d1 DB=canwin-db --local",
+    "dev:backend": "wrangler pages dev ./dist",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:migrate:local": "wrangler d1 migrations apply canwin_v2_final_db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply canwin_v2_final_db --remote",
+    "deploy": "npm run build && wrangler pages deploy ./dist --project-name canwin"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.89.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tsndr/cloudflare-worker-jwt": "^3.2.1",
     "html2canvas": "^1.4.1",
@@ -32,6 +34,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "wrangler": "^4.152.0"
   }
 }

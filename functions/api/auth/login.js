@@ -33,7 +33,10 @@ export async function onRequestPost({ request, env }) {
     // Fetch user stats
     const stats = await db.prepare('SELECT * FROM user_stats WHERE user_id = ?').bind(user.id).first() || {};
 
-    const secret = env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+    const secret = env.JWT_SECRET;
+    if (!secret) {
+      return new Response(JSON.stringify({ error: 'Server misconfigured: JWT_SECRET is not set' }), { status: 500 });
+    }
     const payload = {
         id: user.id,
         phone,

@@ -1,0 +1,4 @@
+# Local secrets for `wrangler pages dev`. Copy to .dev.vars (git-ignored) and fill in.
+# In production, set the same value with:
+#   npx wrangler pages secret put JWT_SECRET --project-name canwin
+JWT_SECRET=replace-with-a-long-random-string
