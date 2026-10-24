@@ -1379,12 +1379,14 @@ export default function AdminDashboard({ showToast }) {
                                 </div>
                                 {(() => {
                                     const total = coursePayoutTotal();
+                                    const normal = [1, 2, 3, 4, 5].reduce((s, n) => s + (Number(courseForm[`level_${n}_payout`]) || 0), 0);
                                     const price = Number(courseForm.price) || 0;
                                     const over = price > 0 && total > price;
                                     return (
                                         <div className={`rounded-lg p-3 text-sm ${over ? 'bg-red-50 text-red-600' : 'bg-white'}`} style={{ border: '1px solid var(--border-color)' }}>
-                                            <div className="flex justify-between"><span>Total paid per admission</span><span className="font-semibold">₹{total.toLocaleString()}{price > 0 ? ` (${Math.round(total / price * 1000) / 10}% of fee)` : ''}</span></div>
-                                            {price > 0 && <div className="flex justify-between"><span>Company keeps</span><span className="font-semibold">₹{Math.max(price - total, 0).toLocaleString()}</span></div>}
+                                            <div className="flex justify-between"><span>Total paid per admission</span><span className="font-semibold">₹{normal.toLocaleString()}{price > 0 ? ` (${Math.round(normal / price * 1000) / 10}% of fee)` : ''}</span></div>
+                                            {price > 0 && <div className="flex justify-between"><span>Company keeps</span><span className="font-semibold">₹{Math.max(price - normal, 0).toLocaleString()}</span></div>}
+                                            {total > normal && <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--text-muted)' }}><span>Up to, when a rank amount below applies</span><span>₹{total.toLocaleString()}</span></div>}
                                             {over && <p className="mt-1 font-semibold">Total commission is more than the course fee. Lower the amounts.</p>}
                                         </div>
                                     );
