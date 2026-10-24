@@ -1,89 +1,86 @@
+import { json, error, serverError, readJson, isAdmin } from '../../lib/server/http.js';
+
+const MIN_WITHDRAWAL = 500;
+
 export async function onRequestGet({ request, env, data }) {
   const url = new URL(request.url);
-  const userId = url.searchParams.get('user_id');
-  
-  // Protect route
-  if (!data?.user || (data.user.id != userId && data.user.rank !== 'Super Admin')) {
-     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 403 });
+  const userId = url.searchParams.get('user_id') || data.user.id;
+
+  if (data.user.id != userId && !isAdmin(data)) {
+    return error('Unauthorized', 403);
   }
 
   const db = env.DB;
-
   try {
-    // Read from optimized user_stats table instead of calculating
-    let stats = await db.prepare(`
-      SELECT s.wallet_balance, s.withdrawable_balance, s.pending_balance, s.total_paid, s.total_points, s.total_earnings, s.direct_referrals, s.team_size, s.total_admissions, u.rank 
-      FROM user_stats s 
-      JOIN users u ON s.user_id = u.id 
-      WHERE user_id = ?
+    await db.prepare('INSERT OR IGNORE INTO user_stats (user_id) SELECT id FROM users WHERE id = ?').bind(userId).run();
+    const stats = await db.prepare(`
+      SELECT s.wallet_balance, s.withdrawable_balance, s.pending_balance, s.total_paid, u.points AS total_points,
+             s.total_earnings, s.direct_referrals, s.team_size, s.total_admissions, u.rank
+      FROM user_stats s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.user_id = ?
     `).bind(userId).first();
-    
-    // Industrial Standard: Graceful recovery if statistics row is missing
-    if (!stats) {
-        // Confirm user exists to check if it's a seed mismatch
-        const user = await db.prepare('SELECT id, rank FROM users WHERE id = ?').bind(userId).first();
-        if (!user) {
-            return new Response(JSON.stringify({ error: 'User not found' }), { status: 404 });
-        }
-        
-        // Auto-initialize if row is genuinely missing
-        await db.prepare('INSERT OR IGNORE INTO user_stats (user_id) VALUES (?)').bind(userId).run();
-        
-        // Re-fetch
-        stats = await db.prepare(`
-          SELECT s.wallet_balance, s.withdrawable_balance, s.pending_balance, s.total_paid, s.total_points, s.total_earnings, s.direct_referrals, s.team_size, s.total_admissions, u.rank 
-          FROM user_stats s 
-          JOIN users u ON s.user_id = u.id 
-          WHERE user_id = ?
-        `).bind(userId).first();
-    }
+    if (!stats) return error('User not found', 404);
 
-    return new Response(JSON.stringify(stats || { error: 'Stats missing' }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    const { results: withdrawals } = await db.prepare(`
+      SELECT id, amount, status, upi_id, bank_name, account_number, created_at, updated_at
+      FROM withdraw_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 20
+    `).bind(userId).all();
+
+    return json({ ...stats, withdrawals });
+  } catch (err) {
+    return serverError(err, 'Wallet');
   }
 }
 
+// Requests a payout. Either a UPI ID or full bank details are required so the
+// admin knows where to send the money.
 export async function onRequestPost({ request, env, data }) {
-  const { user_id, amount } = await request.json();
-  
-  // Protect route
-  if (!data?.user || data.user.id != user_id) {
-     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 403 });
+  const body = await readJson(request);
+  const amount = Math.round(Number(body.amount) * 100) / 100;
+  const upiId = String(body.upi_id || '').trim();
+  const bankName = String(body.bank_name || '').trim();
+  const accountNumber = String(body.account_number || '').replace(/\s/g, '');
+  const ifsc = String(body.ifsc || '').trim().toUpperCase();
+  const userId = data.user.id;
+
+  if (!Number.isFinite(amount) || amount < MIN_WITHDRAWAL) {
+    return error(`Minimum withdrawal is ₹${MIN_WITHDRAWAL}`);
+  }
+  const hasUpi = /^[\w.-]{2,}@[a-zA-Z]{2,}$/.test(upiId);
+  const hasBank = bankName && /^\d{6,18}$/.test(accountNumber) && /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc);
+  if (!hasUpi && !hasBank) {
+    return error('Enter a valid UPI ID, or bank name, account number and IFSC');
   }
 
   const db = env.DB;
-
   try {
-    const stats = await db.prepare('SELECT withdrawable_balance FROM user_stats WHERE user_id = ?').bind(user_id).first();
-    if (!stats) return new Response(JSON.stringify({ error: 'User not found' }), { status: 404 });
+    // Deduct only if the balance covers it, in one statement, so two quick
+    // requests can never take more than the user has.
+    const hold = await db.prepare(`
+      UPDATE user_stats
+      SET withdrawable_balance = withdrawable_balance - ?, pending_balance = pending_balance + ?
+      WHERE user_id = ? AND withdrawable_balance >= ?
+    `).bind(amount, amount, userId, amount).run();
+    if (!hold.meta.changes) return error('Insufficient withdrawable balance');
 
-    if (amount < 500) {
-      return new Response(JSON.stringify({ error: 'Minimum withdrawal is ₹500' }), { status: 400 });
+    try {
+      const created = await db.prepare(`
+        INSERT INTO withdraw_requests (user_id, amount, bank_name, account_number, ifsc, upi_id, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending')
+      `).bind(userId, amount, hasBank ? bankName : null, hasBank ? accountNumber : null, hasBank ? ifsc : null, hasUpi ? upiId : null).run();
+      await db.prepare(`
+        INSERT INTO commission_ledger (user_id, type, amount, reference_id, description)
+        VALUES (?, 'withdrawal_request', ?, ?, 'Withdrawal requested')
+      `).bind(userId, -amount, created.meta.last_row_id).run();
+    } catch (err) {
+      await db.prepare('UPDATE user_stats SET withdrawable_balance = withdrawable_balance + ?, pending_balance = pending_balance - ? WHERE user_id = ?')
+        .bind(amount, amount, userId).run();
+      throw err;
     }
 
-    if (stats.withdrawable_balance < amount) {
-      return new Response(JSON.stringify({ error: 'Insufficient withdrawable balance' }), { status: 400 });
-    }
-
-    // Atomic transaction for withdrawal request
-    await db.batch([
-      // 1. Record request
-      db.prepare('INSERT INTO withdraw_requests (user_id, amount, status) VALUES (?, ?, "pending")').bind(user_id, amount),
-      
-      // 2. Add to Ledger (Negative amount to deduct from system total tracking if needed, but primarily we adjust stats)
-      db.prepare('INSERT INTO commission_ledger (user_id, type, amount, description) VALUES (?, "withdrawal_request", ?, "Requested withdrawal")').bind(user_id, -amount),
-
-      // 3. Move from withdrawable to pending
-      db.prepare('UPDATE user_stats SET withdrawable_balance = withdrawable_balance - ?, pending_balance = pending_balance + ? WHERE user_id = ?').bind(amount, amount, user_id)
-    ]);
-
-    return new Response(JSON.stringify({ message: 'Withdrawal request submitted' }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    return json({ message: 'Withdrawal request submitted' });
+  } catch (err) {
+    return serverError(err, 'Withdrawal request');
   }
 }

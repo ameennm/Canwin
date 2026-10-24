@@ -1,119 +1,66 @@
-async function hashPassword(password) {
-  const msgUint8 = new TextEncoder().encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
+import { json, error, serverError, readJson } from '../../../../lib/server/http.js';
+import { hashPassword, normalizePhone, isValidMobile } from '../../../../lib/server/security.js';
+import { normalizeRank, findUpline, canRecruit, insertUserStatements, teamStatsStatements } from '../../../../lib/server/users.js';
 
-export async function onRequestPost({ request, env, data }) {
-  // Auth check
-  if (data?.user?.rank !== 'Super Admin') {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 403 });
-  }
-
-  const { name, phone, email, password, rank, upline_referral_code } = await request.json();
+// Admin creates an already-active promoter at any rank below their upline.
+export async function onRequestPost({ request, env }) {
+  const { name, phone, email, password, rank, upline_referral_code } = await readJson(request);
   const db = env.DB;
 
+  const cleanName = String(name || '').trim();
+  const cleanPhone = normalizePhone(phone);
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  const newRank = normalizeRank(rank);
+
+  if (!cleanName || !cleanPhone || !cleanEmail || !password) {
+    return error('Missing required fields: name, phone, email, password');
+  }
+  if (!isValidMobile(cleanPhone)) return error('Enter a valid 10-digit mobile number');
+  if (!newRank) return error('Invalid rank. Must be JSO, SO, SOP, SDO, or Platinum');
+  if (String(password).length < 6) return error('Password must be at least 6 characters');
+
   try {
-    // Validate required fields
-    if (!name || !phone || !email || !password || !rank) {
-      return new Response(JSON.stringify({ error: 'Missing required fields: name, phone, email, password, rank' }), { status: 400 });
+    const upline = await findUpline(db, upline_referral_code || 'ADMIN');
+    if (!upline) return error('Upline referral code not found');
+    if (!canRecruit(upline.rank, newRank)) {
+      return error(`A ${newRank} cannot be placed under a ${upline.rank}. Choose a higher-ranked upline.`);
     }
 
-    // Hash the password
-    const hashedPassword = await hashPassword(password);
-
-    // Normalize rank names to abbreviations
-    const rankMap = {
-      'Junior Sales Officer': 'JSO',
-      'Sales Officer': 'SO',
-      'Sales Officer Premium': 'SOP',
-      'Senior Development Officer': 'SDO',
-      'Platinum Leader': 'Platinum',
-      'JSO': 'JSO',
-      'SO': 'SO',
-      'SOP': 'SOP',
-      'SDO': 'SDO',
-      'Platinum': 'Platinum',
-    };
-    const normalizedRank = rankMap[rank] || 'JSO';
-
-    // Validate normalized rank
-    const validRanks = ['JSO', 'SO', 'SOP', 'SDO', 'Platinum'];
-    if (!validRanks.includes(normalizedRank)) {
-      return new Response(JSON.stringify({ error: 'Invalid rank. Must be JSO, SO, SOP, SDO, or Platinum' }), { status: 400 });
-    }
-
-    // Upline logic
-    let uplineChain = [];
-    let uplineId = null;
-    if (upline_referral_code) {
-      const upline = await db.prepare('SELECT id, upline_chain FROM users WHERE referral_code = ?').bind(upline_referral_code).first();
-      if (upline) {
-        uplineId = upline.id;
-        try {
-          const parentChain = JSON.parse(upline.upline_chain || '[]');
-          uplineChain = [upline.id, ...parentChain];
-        } catch (e) {
-          uplineChain = [upline.id];
-        }
-      }
-    } else {
-      const admin = await db.prepare('SELECT id FROM users WHERE rank = "Super Admin" LIMIT 1').first();
-      if (admin) {
-        uplineId = admin.id;
-        uplineChain = [admin.id];
-      }
-    }
-
-    // Generate referral code with correct prefix
-    const countResult = await db.prepare('SELECT COUNT(*) as count FROM users').first();
-    const nextId = (countResult.count || 0) + 1001;
-    const prefixMap = { 'JSO': 'JSO', 'SO': 'SO', 'SOP': 'SOP', 'SDO': 'SDO', 'Platinum': 'PL' };
-    const newReferralCode = `${prefixMap[normalizedRank] || 'JSO'}${nextId}`;
-
-    // Insert with HASHED password
-    await db.prepare(`
-      INSERT INTO users (name, phone, email, password_hash, rank, referral_code, upline_id, upline_chain, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
-    `).bind(name, phone, email, hashedPassword, normalizedRank, newReferralCode, uplineId, JSON.stringify(uplineChain))
-      .run();
-
-    return new Response(JSON.stringify({
-      message: 'User created successfully',
-      referral_code: newReferralCode
-    }), {
-      headers: { 'Content-Type': 'application/json' }
+    const { statements } = insertUserStatements(db, {
+      name: cleanName,
+      phone: cleanPhone,
+      email: cleanEmail,
+      passwordHash: await hashPassword(password),
+      rank: newRank,
+      uplineId: upline.id,
+      uplineChain: upline.chain,
+      status: 'active',
     });
+    statements.push(...teamStatsStatements(db, { upline_id: upline.id, upline_chain: JSON.stringify(upline.chain) }, 1));
+    await db.batch(statements);
 
-  } catch (error) {
-    if (error.message.includes('UNIQUE constraint failed')) {
-      return new Response(JSON.stringify({ error: 'Phone or Email already registered' }), { status: 400 });
+    const created = await db.prepare('SELECT referral_code FROM users WHERE phone = ?').bind(cleanPhone).first();
+    return json({ message: 'User created successfully', referral_code: created?.referral_code });
+  } catch (err) {
+    if (String(err.message).includes('UNIQUE constraint failed')) {
+      return error('Phone or Email already registered');
     }
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    return serverError(err, 'Create user');
   }
 }
 
-export async function onRequestGet({ env, data }) {
-  // Auth check
-  if (data?.user?.rank !== 'Super Admin') {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 403 });
-  }
-
-  const db = env.DB;
+export async function onRequestGet({ env }) {
   try {
-    const users = await db.prepare(`
-      SELECT u.id, u.name, u.phone, u.email, u.rank, u.referral_code, u.upline_id, u.upline_chain, u.points, u.status, u.created_at,
-             s.wallet_balance, s.withdrawable_balance, s.total_points, s.total_earnings, s.direct_referrals, s.team_size, s.total_admissions
+    const { results } = await env.DB.prepare(`
+      SELECT u.id, u.name, u.phone, u.email, u.rank, u.referral_code, u.upline_id, u.upline_chain, u.points, u.state AS status, u.created_at,
+             s.wallet_balance, s.withdrawable_balance, u.points AS total_points, s.total_earnings, s.direct_referrals, s.team_size, s.total_admissions
       FROM users u
       LEFT JOIN user_stats s ON u.id = s.user_id
+      WHERE u.state != 'deleted'
       ORDER BY u.created_at DESC
     `).all();
-
-    return new Response(JSON.stringify(users.results), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    return json(results);
+  } catch (err) {
+    return serverError(err, 'List users');
   }
 }

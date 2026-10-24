@@ -121,7 +121,11 @@ export default function MyAdmissionsPage({ showToast }) {
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Reward</span>
-                                        <span className="text-sm font-bold text-teal-400">+{a.points_earned || 0} Points</span>
+                                        <span className="text-sm font-bold text-teal-400">
+                                            {a.status === 'approved'
+                                                ? `₹${Number(a.commission_earned || 0).toLocaleString()} + ${a.points_earned || 0} Points`
+                                                : a.status === 'pending' ? 'After approval' : '—'}
+                                        </span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Date</span>

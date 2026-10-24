@@ -56,8 +56,7 @@ export default function AddStudentPage({ showToast }) {
             await api.admissions.create({
                 student_name: form.studentName.trim(),
                 student_phone: form.studentContact.trim(),
-                course_id: form.courseId,
-                admitted_by: user.id
+                course_id: form.courseId
             });
 
             showToast('Student enrolled successfully!');

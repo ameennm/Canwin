@@ -19,17 +19,29 @@ async function request(endpoint, options = {}) {
   }
 
   if (!response.ok) {
+    // Expired or deactivated session: clear it and go back to the right login page.
+    if (response.status === 401 && token && !endpoint.startsWith('/auth/')) {
+      const wasAdmin = localStorage.getItem('canwin_admin');
+      clearSession();
+      window.location.href = wasAdmin ? '/adminlogin' : '/';
+    }
     throw new Error(data.error || 'Request failed');
   }
 
   return data;
 }
 
+export function clearSession() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('canwin_user');
+  localStorage.removeItem('canwin_admin');
+}
+
 export const api = {
   auth: {
     login: (phone, password) => request('/auth/login', { method: 'POST', body: JSON.stringify({ phone, password }) }),
     register: (data) => request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
-    getProfile: (userId) => request(`/wallet?user_id=${userId}`), // Reusing wallet for now or add profile endpoint
+    changePassword: (current_password, new_password) => request('/auth/change-password', { method: 'POST', body: JSON.stringify({ current_password, new_password }) }),
   },
   courses: {
     list: (params = {}) => {
@@ -49,7 +61,7 @@ export const api = {
   },
   wallet: {
     get: (userId) => request(`/wallet?user_id=${userId}`),
-    withdraw: (userId, amount) => request('/wallet', { method: 'POST', body: JSON.stringify({ user_id: userId, amount }) }),
+    withdraw: (details) => request('/wallet', { method: 'POST', body: JSON.stringify(details) }),
   },
   bonuses: {
     list: () => request('/bonuses'),
@@ -64,12 +76,10 @@ export const api = {
     getReferrals: () => request('/admin/referrals'),
     approveUser: (userId) => request(`/admin/approve/${userId}`, { method: 'POST' }),
     deleteUser: (userId) => request(`/admin/delete-user/${userId}`, { method: 'DELETE' }),
-    deleteCourse: (courseId) => request(`/admin/delete-course/${courseId}`, { method: 'DELETE' }),
     getWithdrawals: () => request('/admin/withdrawals'),
     updateWithdrawal: (id, status) => request('/admin/withdrawals', { method: 'PUT', body: JSON.stringify({ id, status }) }),
     updateUser: (userId, data) => request(`/admin/users/${userId}`, { method: 'PUT', body: JSON.stringify(data) }),
     updateAdmission: (admissionId, data) => request(`/admin/admissions/${admissionId}`, { method: 'PUT', body: JSON.stringify(data) }),
-    seed: () => request('/admin/seed', { method: 'POST' }),
     admissions: {
         approve: (admission_id) => request(`/admin/admissions/approve`, { method: 'POST', body: JSON.stringify({ admission_id }) }),
         reject: (admission_id) => request(`/admin/admissions/reject`, { method: 'POST', body: JSON.stringify({ admission_id }) })

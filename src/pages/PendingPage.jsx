@@ -1,37 +1,12 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle, ArrowLeft, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
-import { api } from '../lib/api';
-import Spinner from '../components/Spinner';
 import ThemeToggle from '../components/ThemeToggle';
 
-export default function PendingPage({ showToast }) {
+export default function PendingPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const user = location.state?.user;
-    const [checking, setChecking] = useState(false);
 
-    const checkStatus = async () => {
-        if (!user?.whatsapp_number) return;
-
-        setChecking(true);
-        try {
-            const userData = await api.auth.login(user.whatsapp_number, user.password); // Assuming password is in state/state
-            
-            if (userData && userData.is_approved) {
-                localStorage.setItem('canwin_user', JSON.stringify(userData));
-                showToast('Account approved!');
-                navigate('/dashboard');
-            } else {
-                showToast('Still pending approval', 'error');
-            }
-        } catch (err) {
-            console.error('Error checking status:', err);
-            showToast('Still pending approval', 'error');
-        } finally {
-            setChecking(false);
-        }
-    };
 
     if (!user) {
         return (
@@ -71,11 +46,11 @@ export default function PendingPage({ showToast }) {
                         <div className="space-y-2">
                             <div className="flex justify-between">
                                 <span style={{ color: 'var(--text-muted)' }}>Name</span>
-                                <span style={{ color: 'var(--text-primary)' }}>{user.full_name}</span>
+                                <span style={{ color: 'var(--text-primary)' }}>{user.name}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span style={{ color: 'var(--text-muted)' }}>Mobile</span>
-                                <span style={{ color: 'var(--text-primary)' }}>{user.whatsapp_number}</span>
+                                <span style={{ color: 'var(--text-primary)' }}>{user.phone}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span style={{ color: 'var(--text-muted)' }}>Status</span>
@@ -89,16 +64,11 @@ export default function PendingPage({ showToast }) {
                     {/* Actions */}
                     <div className="space-y-3">
                         <button
-                            onClick={checkStatus}
-                            disabled={checking}
+                            onClick={() => navigate('/')}
                             className="btn-primary w-full flex items-center justify-center gap-2"
                         >
-                            {checking ? <Spinner size="sm" /> : (
-                                <>
-                                    <RefreshCw className="w-5 h-5" />
-                                    Check Status
-                                </>
-                            )}
+                            <RefreshCw className="w-5 h-5" />
+                            Check Status (Log in)
                         </button>
                         <button
                             onClick={() => navigate('/')}

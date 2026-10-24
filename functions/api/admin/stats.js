@@ -1,41 +1,23 @@
-export async function onRequestGet({ env, data }) {
-  // Ensure only admin can read
-  if (data?.user?.rank !== 'Super Admin') {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 403 });
-  }
+import { json, serverError } from '../../../lib/server/http.js';
 
-  const db = env.DB;
+export async function onRequestGet({ env }) {
   try {
-    const stats = await db.prepare(`
-      SELECT 
-        (SELECT COUNT(*) FROM users) as totalPromoters,
-        (SELECT COUNT(*) FROM admissions) as totalStudents,
-        (SELECT SUM(course_price) FROM courses c JOIN admissions a ON c.course_id = a.course_id WHERE a.status = 'approved') as revenue,
-        (SELECT SUM(amount) FROM commission_ledger WHERE type LIKE 'commission_%' OR type = 'bonus') as totalCommissions,
-        (SELECT COUNT(*) FROM admissions a JOIN courses c ON c.course_id = a.course_id WHERE c.course_price > 0 AND a.status = 'approved') as paidReferrals,
-        (SELECT COUNT(*) FROM admissions a JOIN courses c ON c.course_id = a.course_id WHERE c.course_price <= 0 AND a.status = 'approved') as freeReferrals
-      FROM users LIMIT 1
+    const stats = await env.DB.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM users WHERE rank != 'Super Admin' AND state IN ('active', 'suspended')) AS totalPromoters,
+        (SELECT COUNT(*) FROM users WHERE state = 'pending') AS pendingPromoters,
+        (SELECT COUNT(*) FROM admissions) AS totalStudents,
+        (SELECT COUNT(*) FROM admissions WHERE status = 'pending') AS pendingAdmissions,
+        (SELECT COALESCE(SUM(a.course_price_at_admission), 0) FROM admissions a WHERE a.status = 'approved') AS revenue,
+        (SELECT COALESCE(SUM(amount), 0) FROM commission_ledger WHERE type LIKE 'commission_%' OR type = 'bonus') AS commissions,
+        (SELECT COALESCE(SUM(total_paid), 0) FROM user_stats) AS paidOut,
+        (SELECT COALESCE(SUM(amount), 0) FROM withdraw_requests WHERE status IN ('pending', 'approved')) AS pendingWithdrawals,
+        (SELECT COUNT(*) FROM admissions WHERE status = 'approved' AND course_price_at_admission > 0) AS paidReferrals,
+        (SELECT COUNT(*) FROM admissions WHERE status = 'approved' AND COALESCE(course_price_at_admission, 0) <= 0) AS freeReferrals
     `).first();
 
-    const revenue = stats?.revenue || 0;
-    const commissions = stats?.totalCommissions || 0;
-    const profit = revenue - commissions;
-
-    return new Response(JSON.stringify({
-      totalPromoters: stats?.totalPromoters || 0,
-      totalStudents: stats?.totalStudents || 0,
-      revenue,
-      commissions,
-      profit,
-      paidReferrals: stats?.paidReferrals || 0,
-      freeReferrals: stats?.freeReferrals || 0
-    }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return json({ ...stats, profit: (stats.revenue || 0) - (stats.commissions || 0) });
+  } catch (err) {
+    return serverError(err, 'Admin stats');
   }
 }

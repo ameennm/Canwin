@@ -13,28 +13,35 @@ export default function RegistrationPage({ showToast }) {
 
     const [form, setForm] = useState({
         fullName: '',
-        referrerCode: '', 
+        email: '',
+        referrerCode: '',
     });
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!form.fullName.trim()) {
+        if (!phone || !password) {
+            showToast('Please start from the sign-up screen', 'error');
+            navigate('/');
+            return;
+        }
+        if (!form.fullName.trim() || !form.email.trim() || !form.referrerCode.trim()) {
             showToast('Please fill all required fields', 'error');
             return;
         }
 
         setLoading(true);
         try {
-            const data = await api.auth.register({
+            await api.auth.register({
                 name: form.fullName.trim(),
+                email: form.email.trim(),
                 phone: phone,
                 password: password,
-                referral_code: form.referrerCode,
+                referral_code: form.referrerCode.trim().toUpperCase(),
             });
 
             showToast('Registration successful! Please wait for admin approval.');
-            navigate('/');
+            navigate('/pending', { state: { user: { name: form.fullName.trim(), phone } } });
         } catch (err) {
             console.error('Registration error:', err);
             showToast(err.message || 'Registration failed', 'error');
@@ -100,18 +107,31 @@ export default function RegistrationPage({ showToast }) {
                         />
                     </div>
 
+                    {/* Email */}
+                    <div>
+                        <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
+                            Email <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                            type="email"
+                            value={form.email}
+                            onChange={(e) => setForm({ ...form, email: e.target.value })}
+                            placeholder="you@example.com"
+                            className="input-field"
+                            disabled={loading}
+                        />
+                    </div>
 
-
-                    {/* Referrer Code (Optional) */}
+                    {/* Referrer Code */}
                     <div className="card" style={{ background: 'rgba(20, 184, 166, 0.05)', border: '1px solid rgba(20, 184, 166, 0.2)' }}>
                         <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
                             <span className="flex items-center gap-1">
                                 <Users className="w-4 h-4 text-teal-400" />
-                                Referrer Code (Optional)
+                                Referrer Code <span className="text-red-400">*</span>
                             </span>
                         </label>
                         <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-                            If another promoter referred you, enter their ID (e.g., CNWN1001)
+                            Enter the code of the promoter who invited you (e.g., CNWN1001)
                         </p>
                         <div className="flex gap-2">
                             <input

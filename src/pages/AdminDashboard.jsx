@@ -6,9 +6,9 @@ import {
     ArrowUpRight, ArrowDownRight, TrendingUp,
     Shield, LogOut, ChevronRight, Filter, Download,
     RefreshCw, Megaphone, GraduationCap, Zap, DollarSign, Gift, X,
-    UserCheck, Award, Trophy, Link2, User, Trash2, Edit2, Phone, CreditCard, Star
+    UserCheck, Award, Trophy, Link2, User, Trash2, Edit2, Phone, CreditCard, Star, Crown, Medal, KeyRound
 } from 'lucide-react';
-import { api } from '../lib/api';
+import { api, clearSession } from '../lib/api';
 import { formatDate } from '../lib/utils';
 import ThemeToggle from '../components/ThemeToggle';
 import Spinner from '../components/Spinner';
@@ -60,6 +60,8 @@ export default function AdminDashboard({ showToast }) {
     const [specialOffers, setSpecialOffers] = useState([]);
     const [showOfferModal, setShowOfferModal] = useState(false);
     const [offerForm, setOfferForm] = useState({ course_id: '', valid_until: '', jso_amount: 0, so_amount: 0, sop_amount: 0, sdo_amount: 0, platinum_amount: 0 });
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({ current: '', next: '' });
 
     const getMonthName = (monthIndex) => {
         return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][monthIndex];
@@ -104,7 +106,9 @@ export default function AdminDashboard({ showToast }) {
             setBonuses(bonusesData || []);
             setSpecialOffers(offersData || []);
 
-            fetchMonthlyData();
+            fetchMonthlyData(studentData || []);
+            fetchMonthlyTopPromoters(selectedMonth, studentData || [], promoterData || []);
+            fetchCourseAnalytics(selectedMonth, studentData || [], courseData || []);
         } catch (err) {
             console.error('Error loading admin data:', err);
             showToast('Error loading admin data', 'error');
@@ -113,40 +117,51 @@ export default function AdminDashboard({ showToast }) {
         }
     };
 
-    const fetchMonthlyData = async () => {
-        try {
-            const now = new Date();
-            const monthlyStats = [];
-            // Mock data for now until API is updated
-            for (let i = 5; i >= 0; i--) {
-                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                monthlyStats.push({ month: getMonthName(date.getMonth()), year: date.getFullYear(), paid: 0, free: 0, total: 0 });
-            }
-            setMonthlyData(monthlyStats);
-        } catch (err) { console.error('Error fetching monthly data:', err); }
+    // Analytics are built from the approved admissions already loaded above.
+    const admissionMonth = (s) => String(s.approved_at || s.created_at || '').slice(0, 7);
+    const approvedInMonth = (students, monthStr) => students.filter(s => s.status === 'approved' && admissionMonth(s) === monthStr);
+
+    const fetchMonthlyData = (students = allStudents) => {
+        const now = new Date();
+        const monthlyStats = [];
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const list = approvedInMonth(students, key);
+            const paid = list.filter(s => s.course_price > 0).length;
+            monthlyStats.push({ month: getMonthName(date.getMonth()), year: date.getFullYear(), paid, free: list.length - paid, total: list.length });
+        }
+        setMonthlyData(monthlyStats);
     };
 
-    const fetchMonthlyTopPromoters = async (monthStr) => {
-        try {
-            // Placeholder for month-specific data
-            // const monthData = await api.admin.getMonthlyStats(monthStr);
-            setMonthlyTopPromoters([]);
-        } catch (err) { console.error('Error fetching monthly top promoters:', err); }
+    const fetchMonthlyTopPromoters = (monthStr, students = allStudents, promoters = allPromoters) => {
+        const counts = {};
+        approvedInMonth(students, monthStr).forEach(s => { counts[s.admitted_by_user_id] = (counts[s.admitted_by_user_id] || 0) + 1; });
+        const top = Object.entries(counts)
+            .map(([id, count]) => {
+                const p = promoters.find(x => String(x.id) === id);
+                return p ? { id: p.id, name: p.name, referral_code: p.referral_code, points: p.total_points || 0, count } : null;
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+        setMonthlyTopPromoters(top);
     };
 
-    const fetchCourseAnalytics = async (monthStr) => {
-        try {
-            // Placeholder for course analytics
-            // const analytics = await api.admin.getCourseAnalytics(monthStr);
-            setCourseAnalytics([]);
-        } catch (err) { console.error('Error fetching course analytics:', err); }
+    const fetchCourseAnalytics = (monthStr, students = allStudents, courseList = courses) => {
+        const counts = {};
+        approvedInMonth(students, monthStr).forEach(s => { counts[s.course_id] = (counts[s.course_id] || 0) + 1; });
+        setCourseAnalytics(courseList
+            .filter(c => counts[c.id])
+            .map(c => ({ id: c.id, name: c.name, price: c.price, admissions: counts[c.id] }))
+            .sort((a, b) => b.admissions - a.admissions));
     };
 
     const fetchStudentDetails = async (student) => {
         setSelectedStudent(student);
         setLoadingDetails(true);
         try {
-            setStudentDetails([]);
+            setStudentDetails(allStudents.filter(s => s.student_phone === student.student_phone).map(s => ({ ...s, price: s.course_price })));
         } catch (err) { showToast('Error loading details', 'error'); }
         finally { setLoadingDetails(false); }
     };
@@ -155,11 +170,8 @@ export default function AdminDashboard({ showToast }) {
         setSelectedPromoter(promoter);
         setLoadingDetails(true);
         try {
-            // Fetch students referred by this promoter
-            setPromoterReferrals([]);
-
-            // Fetch promoters referred by this promoter
-            setPromoterReferredPromoters([]);
+            setPromoterReferrals(allStudents.filter(s => s.admitted_by_user_id === promoter.id));
+            setPromoterReferredPromoters(allPromoters.filter(p => p.upline_id === promoter.id));
         } catch (err) { showToast('Error loading details', 'error'); }
         finally { setLoadingDetails(false); }
     };
@@ -238,7 +250,7 @@ export default function AdminDashboard({ showToast }) {
             await api.admin.approveUser(userId);
             showToast('Promoter approved!');
             fetchData();
-        } catch (err) { showToast('Failed to approve', 'error'); }
+        } catch (err) { showToast(err.message || 'Failed to approve', 'error'); }
         finally { setActionLoading(null); }
     };
 
@@ -249,7 +261,7 @@ export default function AdminDashboard({ showToast }) {
             await api.admin.updateWithdrawal(id, status);
             showToast(`Withdrawal ${status}!`);
             fetchData();
-        } catch (err) { showToast('Failed to update withdrawal', 'error'); }
+        } catch (err) { showToast(err.message || 'Failed to update withdrawal', 'error'); }
         finally { setActionLoading(null); }
     };
 
@@ -287,13 +299,18 @@ export default function AdminDashboard({ showToast }) {
         }
         setActionLoading('bonus-save');
         try {
-            await api.bonuses.create(bonusForm);
+            // datetime-local is the admin's local time; send it as UTC.
+            await api.bonuses.create({
+                ...bonusForm,
+                start_time: new Date(bonusForm.start_time).toISOString(),
+                end_time: new Date(bonusForm.end_time).toISOString(),
+            });
             showToast('Bonus campaign created!');
             setShowBonusModal(false);
             setBonusForm({ course_id: '', bonus_amount: 0, start_time: '', end_time: '', eligible_roles: 'ALL' });
             fetchData();
         } catch (err) {
-            showToast('Failed to create bonus', 'error');
+            showToast(err.message || 'Failed to create bonus', 'error');
         } finally {
             setActionLoading(null);
         }
@@ -306,7 +323,7 @@ export default function AdminDashboard({ showToast }) {
         }
         setActionLoading('offer-save');
         try {
-            await api.admin.offers.create(offerForm);
+            await api.admin.offers.create({ ...offerForm, valid_until: new Date(offerForm.valid_until).toISOString() });
             showToast('Special offer created!');
             setShowOfferModal(false);
             setOfferForm({ course_id: '', valid_until: '', jso_amount: 0, so_amount: 0, sop_amount: 0, sdo_amount: 0, platinum_amount: 0 });
@@ -360,8 +377,9 @@ export default function AdminDashboard({ showToast }) {
     const handleVerifyReferral = async (referralId) => {
         setActionLoading(referralId);
         try {
-            await api.admin.admissions.approve(referralId);
-            showToast(`Admission ${referralId} verified successfully!`);
+            const result = await api.admin.admissions.approve(referralId);
+            const paid = (result?.payouts || []).reduce((sum, p) => sum + p.amount, 0);
+            showToast(`Approved - ₹${paid.toLocaleString()} paid to ${result?.payouts?.length || 0} promoter(s)`);
             // Industrial Standard: Immediate local state sync + background refetch
             setPendingReferrals(prev => prev.filter(r => r.id !== referralId));
             await fetchData();
@@ -372,14 +390,27 @@ export default function AdminDashboard({ showToast }) {
     };
 
 
+    const handleRejectReferral = async (referralId) => {
+        if (!confirm('Reject this admission? No commission will be paid.')) return;
+        setActionLoading(`rej-${referralId}`);
+        try {
+            await api.admin.admissions.reject(referralId);
+            showToast('Admission rejected');
+            setPendingReferrals(prev => prev.filter(r => r.id !== referralId));
+            await fetchData();
+        } catch (err) {
+            showToast(err.message || 'Failed to reject', 'error');
+        } finally { setActionLoading(null); }
+    };
+
     const handleDeleteUser = async (userId, name) => {
-        if (!confirm(`Delete ${name}? This will delete all their referrals.`)) return;
+        if (!confirm(`Delete ${name}? They will no longer be able to log in or earn commissions.`)) return;
         setActionLoading(`del-${userId}`);
         try {
             await api.admin.deleteUser(userId);
             showToast('Deleted!');
             fetchData();
-        } catch (err) { showToast('Failed to delete', 'error'); }
+        } catch (err) { showToast(err.message || 'Failed to delete', 'error'); }
         finally { setActionLoading(null); }
     };
 
@@ -399,6 +430,11 @@ export default function AdminDashboard({ showToast }) {
                 level_3_payout: parseFloat(courseForm.level_3_payout) || 0,
                 level_4_payout: parseFloat(courseForm.level_4_payout) || 0,
                 level_5_payout: parseFloat(courseForm.level_5_payout) || 0,
+                comm_jso: parseFloat(courseForm.comm_jso) || 0,
+                comm_so: parseFloat(courseForm.comm_so) || 0,
+                comm_sop: parseFloat(courseForm.comm_sop) || 0,
+                comm_sdo: parseFloat(courseForm.comm_sdo) || 0,
+                comm_platinum: parseFloat(courseForm.comm_platinum) || 0,
                 status: courseForm.is_active ? 'active' : 'inactive'
             };
             if (editingCourse) {
@@ -415,7 +451,7 @@ export default function AdminDashboard({ showToast }) {
                 price: 0, is_active: true, comm_jso: 0, comm_so: 0, comm_sop: 0, comm_sdo: 0, comm_platinum: 0 
             });
             fetchData();
-        } catch (err) { showToast('Failed to save course', 'error'); }
+        } catch (err) { showToast(err.message || 'Failed to save course', 'error'); }
         finally { setActionLoading(null); }
     };
 
@@ -426,11 +462,27 @@ export default function AdminDashboard({ showToast }) {
             await api.courses.delete(id);
             showToast('Deleted!');
             fetchData();
-        } catch (err) { showToast('Course has referrals attached', 'error'); }
+        } catch (err) { showToast(err.message || 'Could not delete course', 'error'); }
         finally { setActionLoading(null); }
     };
 
-    const handleLogout = () => { localStorage.removeItem('canwin_admin'); navigate('/adminlogin'); };
+    const handleLogout = () => { clearSession(); navigate('/adminlogin'); };
+
+    const handleChangePassword = async () => {
+        if (passwordForm.next.length < 6) {
+            showToast('New password must be at least 6 characters', 'error');
+            return;
+        }
+        setActionLoading('password');
+        try {
+            await api.auth.changePassword(passwordForm.current, passwordForm.next);
+            showToast('Password changed');
+            setPasswordForm({ current: '', next: '' });
+            setShowPasswordModal(false);
+        } catch (err) {
+            showToast(err.message || 'Could not change password', 'error');
+        } finally { setActionLoading(null); }
+    };
 
     const filterPromoters = (list) => {
         if (!searchQuery.trim()) return list;
@@ -446,10 +498,8 @@ export default function AdminDashboard({ showToast }) {
 
     // Get referrer name for a promoter
     const getReferrerName = (promoter) => {
-        if (!promoter.upline_chain || promoter.upline_chain.length === 0) return null;
-        const referrerId = promoter.upline_chain[0].id;
-        const referrer = allPromoters.find(p => p.id === referrerId);
-        return referrer ? { name: referrer.name, referral_code: referrer.referral_code } : { name: 'Unknown', referral_code: undefined };
+        if (!promoter.upline_id) return null;
+        return { name: promoter.upline_name || 'Unknown', referral_code: promoter.upline_code };
     };
 
     const getRankIcon = (rank) => {
@@ -485,6 +535,7 @@ export default function AdminDashboard({ showToast }) {
                     <div className="flex items-center gap-2">
                         <ThemeToggle />
                         <button onClick={fetchData} className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--hover-bg)' }}><RefreshCw className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} /></button>
+                        <button onClick={() => setShowPasswordModal(true)} title="Change password" className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--hover-bg)' }}><KeyRound className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} /></button>
                         <button onClick={handleLogout} className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--hover-bg)' }}><LogOut className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} /></button>
                     </div>
                 </div>
@@ -514,7 +565,7 @@ export default function AdminDashboard({ showToast }) {
                 <div className="tabs-container">
                     {[
                         { id: 'analytics', icon: BarChart3, label: 'Analytics' },
-                        { id: 'promoters', icon: Megaphone, label: 'Promoters', badge: allPromoters.filter(p => p.status === 'active' || p.status === 'approved' || p.rank === 'Super Admin').length },
+                        { id: 'promoters', icon: Megaphone, label: 'Promoters', badge: allPromoters.filter(p => p.status === 'active' || p.status === 'suspended' || p.rank === 'Super Admin').length },
                         { id: 'students', icon: GraduationCap, label: 'Students', badge: stats.totalStudents },
                         { id: 'finance', icon: DollarSign, label: 'Finance', badge: withdrawals.filter(w => w.status === 'pending').length, highlight: withdrawals.some(w => w.status === 'pending') },
                         { id: 'approvals', icon: UserCheck, label: 'Approvals', badge: pendingPromoters.length, highlight: pendingPromoters.length > 0 },
@@ -629,11 +680,11 @@ export default function AdminDashboard({ showToast }) {
                                 <Plus className="w-4 h-4" /> Create User
                             </button>
                         </div>
-                        {filterPromoters(allPromoters.filter(p => p.status === 'active' || p.status === 'approved' || p.rank === 'Super Admin')).length === 0 ? (
+                        {filterPromoters(allPromoters.filter(p => p.status === 'active' || p.status === 'suspended' || p.rank === 'Super Admin')).length === 0 ? (
                             <div className="card text-center py-8"><Megaphone className="w-10 h-10 text-teal-400 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No promoters found</p></div>
                         ) : (
                             <div className="cards-grid">
-                                {filterPromoters(allPromoters.filter(p => p.status === 'active' || p.status === 'approved' || p.rank === 'Super Admin')).map(p => {
+                                {filterPromoters(allPromoters.filter(p => p.status === 'active' || p.status === 'suspended' || p.rank === 'Super Admin')).map(p => {
                                     const referrer = getReferrerName(p);
                                     return (
                                         <div key={p.id} className="card cursor-pointer hover:border-teal-500/30 transition-all group" onClick={() => fetchPromoterDetails(p)}>
@@ -645,6 +696,7 @@ export default function AdminDashboard({ showToast }) {
                                                     <div>
                                                         <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{p.name}</h3>
                                                         <p className="text-xs font-mono text-teal-400">{p.referral_code}</p>
+                                                        {p.status === 'suspended' && <span className="text-[10px] font-bold uppercase text-red-400">Suspended</span>}
                                                     </div>
                                                 </div>
                                                 <LevelBadge level={p.rank} size="sm" />
@@ -783,7 +835,7 @@ export default function AdminDashboard({ showToast }) {
                                 {pendingReferrals.map(ref => (
                                     <div key={ref.id} className="card">
                                         <div className="flex justify-between items-start mb-2">
-                                            <div><p className="font-medium" style={{ color: 'var(--text-primary)' }}>{ref.admitted_by_name}</p><p className="text-xs text-teal-400">Admission by level ID: {ref.admitted_by_user_id}</p></div>
+                                            <div><p className="font-medium" style={{ color: 'var(--text-primary)' }}>{ref.admitted_by_name}</p><p className="text-xs text-teal-400">{ref.admitted_by_code} • {ref.admitted_by_rank}</p></div>
                                             <span className="badge text-xs bg-amber-500/20 text-amber-400">Pending</span>
                                         </div>
                                         <div className="rounded-lg p-2 mt-2 text-sm" style={{ background: 'var(--hover-bg)' }}>
@@ -791,7 +843,10 @@ export default function AdminDashboard({ showToast }) {
                                             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ref.student_phone}</p>
                                             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{ref.course_name}</p>
                                         </div>
-                                        <button onClick={() => handleVerifyReferral(ref.id)} disabled={actionLoading === ref.id} className="btn-success w-full mt-3 text-sm py-2">{actionLoading === ref.id ? <Spinner size="sm" /> : 'Verify'}</button>
+                                        <div className="flex gap-2 mt-3">
+                                            <button onClick={() => handleVerifyReferral(ref.id)} disabled={actionLoading === ref.id} className="btn-success flex-1 text-sm py-2">{actionLoading === ref.id ? <Spinner size="sm" /> : 'Approve & Pay'}</button>
+                                            <button onClick={() => handleRejectReferral(ref.id)} disabled={actionLoading === `rej-${ref.id}`} className="btn-danger text-sm py-2 px-3">{actionLoading === `rej-${ref.id}` ? <Spinner size="sm" /> : 'Reject'}</button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -930,7 +985,7 @@ export default function AdminDashboard({ showToast }) {
                                         const isUpcoming = now < start;
                                         
                                         return (
-                                            <tr key={b.id} className="hover:bg-white/5">
+                                            <tr key={b.bonus_id} className="hover:bg-white/5">
                                                 <td className="px-4 py-4 font-medium" style={{ color: 'var(--text-primary)' }}>{b.course_name}</td>
                                                 <td className="px-4 py-4 font-bold text-amber-400">₹{b.bonus_amount}</td>
                                                 <td className="px-4 py-4 text-xs font-semibold">{b.eligible_roles}</td>
@@ -1005,6 +1060,16 @@ export default function AdminDashboard({ showToast }) {
                                             <span className="text-lg font-bold text-emerald-500">₹{w.amount}</span>
                                         </div>
 
+                                        <div className="text-xs mb-3 p-2 rounded-lg" style={{ background: 'var(--hover-bg)', color: 'var(--text-secondary)' }}>
+                                            {w.upi_id ? <p>UPI: <span className="font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>{w.upi_id}</span></p> : w.account_number ? (
+                                                <>
+                                                    <p>{w.bank_name}</p>
+                                                    <p>A/C: <span className="font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>{w.account_number}</span></p>
+                                                    <p>IFSC: <span className="font-mono">{w.ifsc}</span></p>
+                                                </>
+                                            ) : <p className="italic">No payment details (old request)</p>}
+                                        </div>
+
                                         <p className="text-[10px] mb-3" style={{ color: 'var(--text-muted)' }}>Requested: {formatDate(w.created_at)}</p>
 
                                         <div className="flex gap-2">
@@ -1015,7 +1080,10 @@ export default function AdminDashboard({ showToast }) {
                                                 </>
                                             )}
                                             {w.status === 'approved' && (
-                                                <button onClick={() => handleUpdateWithdrawal(w.id, 'paid')} disabled={actionLoading === `wd-${w.id}`} className="btn-success py-2 text-xs flex-1">Mark as PAID</button>
+                                                <>
+                                                    <button onClick={() => handleUpdateWithdrawal(w.id, 'paid')} disabled={actionLoading === `wd-${w.id}`} className="btn-success py-2 text-xs flex-1">Mark as PAID</button>
+                                                    <button onClick={() => handleUpdateWithdrawal(w.id, 'rejected')} disabled={actionLoading === `wd-${w.id}`} className="btn-secondary py-2 text-xs border-red-500/30 text-red-400">Reject</button>
+                                                </>
                                             )}
                                             {w.status === 'paid' && (
                                                 <div className="text-center w-full py-2 text-[10px] font-bold text-green-400 bg-green-500/10 rounded-lg">TRANSACTION SETTLED</div>
@@ -1036,13 +1104,13 @@ export default function AdminDashboard({ showToast }) {
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>Student Details</h3>
                             <div className="flex items-center gap-2">
-                                <button 
+                                {selectedStudent.status === 'pending' && <button 
                                     onClick={() => handleEditAdmission(selectedStudent)}
                                     className="p-2 rounded-lg bg-teal-500/10 text-teal-400 hover:bg-teal-500/20"
                                     title="Edit Student Info"
                                 >
                                     <Edit2 className="w-4 h-4" />
-                                </button>
+                                </button>}
                                 <button onClick={() => setSelectedStudent(null)} className="p-2 rounded-lg hover:bg-white/5">
                                     <X className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
                                 </button>
@@ -1050,8 +1118,7 @@ export default function AdminDashboard({ showToast }) {
                         </div>
                         <div className="p-4 rounded-xl mb-4" style={{ background: 'var(--hover-bg)' }}>
                             <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{selectedStudent.student_name}</p>
-                            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{selectedStudent.student_contact}</p>
-                            <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>Aadhar: {selectedStudent.student_aadhar}</p>
+                            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{selectedStudent.student_phone}</p>
                         </div>
                         <h4 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Courses Enrolled ({studentDetails.length})</h4>
                         {loadingDetails ? <div className="text-center py-4"><Spinner /></div> : (
@@ -1140,7 +1207,7 @@ export default function AdminDashboard({ showToast }) {
                                         return displayChain.map((uId, idx) => (
                                             <React.Fragment key={uId}>
                                                 <ChevronRight className="w-3 h-3 text-white/20" />
-                                                <span className="text-xs px-2 py-1 bg-white/5 rounded font-mono text-purple-400" title={`User ID: ${uId}`}>{uId}</span>
+                                                <span className="text-xs px-2 py-1 bg-white/5 rounded font-mono text-purple-400" title={`User ID: ${uId}`}>{allPromoters.find(p => p.id === uId)?.name || `#${uId}`}</span>
                                             </React.Fragment>
                                         ));
                                     } catch (e) { return <span className="text-xs italic text-white/40">Direct Entry</span>; }
@@ -1249,7 +1316,8 @@ export default function AdminDashboard({ showToast }) {
                             {/* Rank-Based Commission (Legacy/Fallback View) */}
                             <div className="p-4 rounded-xl opacity-80" style={{ background: 'var(--hover-bg)' }}>
                                 <details>
-                                    <summary className="text-xs font-semibold cursor-pointer" style={{ color: 'var(--text-muted)' }}>Rank-Based Reference Values (Optional)</summary>
+                                    <summary className="text-xs font-semibold cursor-pointer" style={{ color: 'var(--text-muted)' }}>Level 1 Commission by Rank (Optional)</summary>
+                                    <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>If you enter an amount for a rank, a promoter of that rank gets it as their direct (Level 1) commission instead of the Level 1 payout above. Leave 0 to use the Level 1 payout.</p>
                                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-2">
                                         {[
                                             { label: 'JSO', key: 'comm_jso' },
@@ -1389,7 +1457,6 @@ export default function AdminDashboard({ showToast }) {
                                     <label className="block text-sm mb-1">Status</label>
                                     <select value={editUserForm.status} onChange={e => setEditUserForm({ ...editUserForm, status: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
                                         <option value="active">Active</option>
-                                        <option value="pending">Pending</option>
                                         <option value="suspended">Suspended</option>
                                     </select>
                                 </div>
@@ -1424,6 +1491,59 @@ export default function AdminDashboard({ showToast }) {
                                     {actionLoading === 'admission-edit' ? <Spinner size="sm" /> : 'Save Changes'}
                                 </button>
                                 <button onClick={() => setShowEditAdmissionModal(false)} className="btn-secondary flex-1">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Special Offer Modal */}
+            {showOfferModal && (
+                <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setShowOfferModal(false)}>
+                    <div className="modal-content" style={{ maxWidth: '450px' }} onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Create Special Offer</h3>
+                        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Until the offer ends, promoters of each rank get this extra amount on top of their direct commission for this course.</p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm mb-1">Course</label>
+                                <select value={offerForm.course_id} onChange={e => setOfferForm({ ...offerForm, course_id: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
+                                    <option value="">Select Course</option>
+                                    {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                            <div><label className="block text-sm mb-1">Offer ends</label><input type="datetime-local" value={offerForm.valid_until} onChange={e => setOfferForm({ ...offerForm, valid_until: e.target.value })} className="input-field" /></div>
+                            <div className="grid grid-cols-5 gap-2">
+                                {[['JSO', 'jso_amount'], ['SO', 'so_amount'], ['SOP', 'sop_amount'], ['SDO', 'sdo_amount'], ['PL', 'platinum_amount']].map(([label, key]) => (
+                                    <div key={key}>
+                                        <label className="block text-[10px] mb-1" style={{ color: 'var(--text-muted)' }}>{label} +₹</label>
+                                        <input type="number" value={offerForm[key]} onChange={e => setOfferForm({ ...offerForm, [key]: e.target.value })} className="input-field py-1 text-xs" />
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <button onClick={handleSaveOffer} disabled={actionLoading === 'offer-save'} className="btn-primary flex-1">
+                                    {actionLoading === 'offer-save' ? <Spinner size="sm" /> : 'Create Offer'}
+                                </button>
+                                <button onClick={() => setShowOfferModal(false)} className="btn-secondary flex-1">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Change Password Modal */}
+            {showPasswordModal && (
+                <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setShowPasswordModal(false)}>
+                    <div className="modal-content" style={{ maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Change Admin Password</h3>
+                        <div className="space-y-4">
+                            <input type="password" value={passwordForm.current} onChange={e => setPasswordForm({ ...passwordForm, current: e.target.value })} className="input-field" placeholder="Current password" />
+                            <input type="password" value={passwordForm.next} onChange={e => setPasswordForm({ ...passwordForm, next: e.target.value })} className="input-field" placeholder="New password (min 6 characters)" />
+                            <div className="flex gap-2 pt-2">
+                                <button onClick={handleChangePassword} disabled={actionLoading === 'password'} className="btn-primary flex-1">
+                                    {actionLoading === 'password' ? <Spinner size="sm" /> : 'Update Password'}
+                                </button>
+                                <button onClick={() => setShowPasswordModal(false)} className="btn-secondary flex-1">Cancel</button>
                             </div>
                         </div>
                     </div>

@@ -1,20 +1,25 @@
+import { json, error, serverError } from '../../../../lib/server/http.js';
+import { teamStatsStatements } from '../../../../lib/server/users.js';
+
+// Soft delete: the row stays so admissions and ledger history keep their owner,
+// but the account can no longer log in or receive commissions.
 export async function onRequestDelete({ params, env, data }) {
-  // 1. Ensure only Super Admin can delete
-  if (data?.user?.rank !== 'Super Admin') {
-    return new Response(JSON.stringify({ error: 'Unauthorized: Admin access required' }), { status: 403 });
-  }
-
-  const userId = params.id;
   const db = env.DB;
-
   try {
-    // 2. Perform Soft Deletion to preserve data integrity (Foreign Keys)
-    await db.prepare('UPDATE users SET status = "deleted" WHERE id = ?').bind(userId).run();
+    const user = await db.prepare('SELECT id, rank, upline_id, upline_chain, state AS status FROM users WHERE id = ?').bind(params.id).first();
+    if (!user || user.status === 'deleted') return error('User not found', 404);
+    if (user.rank === 'Super Admin' || user.id === data.user.id) return error('The Super Admin account cannot be deleted');
 
-    return new Response(JSON.stringify({ message: 'User deleted successfully' }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    const result = await db.prepare("UPDATE users SET state = 'deleted', status = 'suspended' WHERE id = ? AND state = ?").bind(user.id, user.status).run();
+    if (!result.meta.changes) return error('User was changed by someone else, please refresh', 409);
+
+    if (user.status === 'active') {
+      const statements = teamStatsStatements(db, user, -1);
+      if (statements.length) await db.batch(statements);
+    }
+
+    return json({ message: 'User deleted successfully' });
+  } catch (err) {
+    return serverError(err, 'Delete user');
   }
 }

@@ -1,43 +1,54 @@
 import * as jwt from '@tsndr/cloudflare-worker-jwt';
+import { error } from '../../lib/server/http.js';
+
+const PUBLIC_ROUTES = ['/api/auth/login', '/api/auth/register'];
+
+// Course and bonus definitions are readable by any promoter but only the admin may change them.
+function requiresAdmin(pathname, method) {
+  if (pathname.startsWith('/api/admin/') || pathname === '/api/admin') return true;
+  const managed = /^\/api\/(courses|bonuses)(\/|$)/.test(pathname);
+  return managed && method !== 'GET';
+}
 
 export async function onRequest(context) {
   const { request, env } = context;
   const { pathname } = new URL(request.url);
 
-  // Skip auth for login, register, and test-db
-  if (pathname.startsWith('/api/auth/login') || 
-      pathname.startsWith('/api/auth/register') || 
-      pathname.startsWith('/api/test-db')) {
+  if (PUBLIC_ROUTES.includes(pathname)) {
     return await context.next();
   }
 
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return error('Unauthorized', 401);
+  }
+
+  const secret = env.JWT_SECRET;
+  if (!secret) {
+    return error('Server misconfigured: JWT_SECRET is not set', 500);
   }
 
   const token = authHeader.split(' ')[1];
-  const secret = env.JWT_SECRET;
-  if (!secret) {
-    return new Response(JSON.stringify({ error: 'Server misconfigured: JWT_SECRET is not set' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  let payload;
+  try {
+    if (!(await jwt.verify(token, secret))) return error('Invalid token', 401);
+    payload = jwt.decode(token).payload;
+  } catch {
+    return error('Token verification failed', 401);
   }
 
-  try {
-    const isValid = await jwt.verify(token, secret);
-    if (!isValid) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
-    }
-    
-    const { payload } = jwt.decode(token);
-    // Attach user to the request context data so downstream handlers can access it
-    context.data = context.data || {};
-    context.data.user = payload;
-    
-    return await context.next();
-  } catch (err) {
-    return new Response(JSON.stringify({ error: 'Token verification failed' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  // Read rank and status fresh from the database on every request, so a
+  // suspension, deletion or rank change takes effect immediately.
+  const user = await env.DB.prepare('SELECT id, phone, rank, state AS status FROM users WHERE id = ?').bind(payload.id).first();
+  if (!user || user.status !== 'active') {
+    return error('Your account is not active. Please log in again.', 401);
   }
+
+  if (requiresAdmin(pathname, request.method) && user.rank !== 'Super Admin') {
+    return error('Unauthorized: Admin access required', 403);
+  }
+
+  context.data = context.data || {};
+  context.data.user = { id: user.id, phone: user.phone, rank: user.rank };
+  return await context.next();
 }

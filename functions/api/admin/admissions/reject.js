@@ -1,23 +1,16 @@
-export async function onRequestPost({ request, env, data }) {
-  if (data?.user?.rank !== 'Super Admin') {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 403 });
-  }
+import { json, error, serverError, readJson } from '../../../../lib/server/http.js';
 
-  const { admissionId } = await request.json();
-  const db = env.DB;
+// Only pending admissions can be rejected; approved ones have already paid out.
+export async function onRequestPost({ request, env }) {
+  const body = await readJson(request);
+  const admissionId = body.admission_id ?? body.admissionId;
+  if (!admissionId) return error('admission_id is required');
 
   try {
-    const admission = await db.prepare('SELECT status FROM admissions WHERE id = ?').bind(admissionId).first();
-
-    if (!admission) return new Response(JSON.stringify({ error: 'Admission not found' }), { status: 404 });
-    if (admission.status !== 'pending') return new Response(JSON.stringify({ error: 'Admission already processed' }), { status: 400 });
-
-    await db.prepare('UPDATE admissions SET status = "rejected" WHERE id = ?').bind(admissionId).run();
-
-    return new Response(JSON.stringify({ message: 'Admission rejected successfully' }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    const result = await env.DB.prepare("UPDATE admissions SET status = 'rejected' WHERE id = ? AND status = 'pending'").bind(admissionId).run();
+    if (!result.meta.changes) return error('Pending admission not found', 404);
+    return json({ message: 'Admission rejected' });
+  } catch (err) {
+    return serverError(err, 'Reject admission');
   }
 }

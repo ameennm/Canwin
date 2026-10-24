@@ -48,3 +48,7 @@ coverage/
 .wrangler/
 local-db-test/
 .dev.vars
+
+# Tutorial media tooling and outputs (large binaries)
+.media-tools/
+client-media/

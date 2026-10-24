@@ -1,34 +1,23 @@
+import { json, error, serverError, readJson } from '../../../lib/server/http.js';
+
+// Admin only (enforced in _middleware.js).
 export async function onRequestPut({ params, request, env }) {
-  const bonusId = params.id;
-  const { status } = await request.json();
-  const db = env.DB;
+  const { status } = await readJson(request);
+  if (!['active', 'inactive', 'expired'].includes(status)) return error('Invalid status');
 
   try {
-    await db.prepare('UPDATE bonus_campaigns SET status = ? WHERE bonus_id = ?')
-      .bind(status, bonusId)
-      .run();
-
-    return new Response(JSON.stringify({ message: 'Bonus campaign updated' }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    await env.DB.prepare('UPDATE bonus_campaigns SET status = ? WHERE bonus_id = ?').bind(status, params.id).run();
+    return json({ message: 'Bonus campaign updated' });
+  } catch (err) {
+    return serverError(err, 'Update bonus');
   }
 }
 
 export async function onRequestDelete({ params, env }) {
-  const bonusId = params.id;
-  const db = env.DB;
-
   try {
-    await db.prepare('DELETE FROM bonus_campaigns WHERE bonus_id = ?')
-      .bind(bonusId)
-      .run();
-
-    return new Response(JSON.stringify({ message: 'Bonus campaign deleted' }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    await env.DB.prepare('DELETE FROM bonus_campaigns WHERE bonus_id = ?').bind(params.id).run();
+    return json({ message: 'Bonus campaign deleted' });
+  } catch (err) {
+    return serverError(err, 'Delete bonus');
   }
 }

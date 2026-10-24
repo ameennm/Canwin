@@ -7,21 +7,21 @@ export default function BonusTimer({ bonus }) {
   useEffect(() => {
     if (!bonus) return;
 
-    const interval = setInterval(() => {
-      const now = new Date();
-      const end = new Date(bonus.end_time);
-      const diff = end - now;
-
+    const tick = () => {
+      const diff = new Date(bonus.end_time) - new Date();
       if (diff <= 0) {
         setTimeLeft('Expired');
         clearInterval(interval);
       } else {
-        const h = Math.floor(diff / 3600000);
+        const d = Math.floor(diff / 86400000);
+        const h = Math.floor((diff % 86400000) / 3600000);
         const m = Math.floor((diff % 3600000) / 60000);
         const s = Math.floor((diff % 60000) / 1000);
-        setTimeLeft(`${h}h ${m}m ${s}s`);
+        setTimeLeft(`${d > 0 ? `${d}d ` : ''}${h}h ${m}m ${s}s`);
       }
-    }, 1000);
+    };
+    const interval = setInterval(tick, 1000);
+    tick();
 
     return () => clearInterval(interval);
   }, [bonus]);

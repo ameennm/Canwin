@@ -1,39 +1,23 @@
+import { json, error, serverError } from '../../../../lib/server/http.js';
+import { teamStatsStatements } from '../../../../lib/server/users.js';
+
+// Activates a self-registered (pending) promoter and adds them to their uplines' team counts.
 export async function onRequestPost({ params, env }) {
-  const userId = params.id;
   const db = env.DB;
-
   try {
-    // 1. Get user and check if already approved
-    const user = await db.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first();
-    if (!user) return new Response(JSON.stringify({ error: 'User not found' }), { status: 404 });
-    if (user.status === 'active') return new Response(JSON.stringify({ message: 'User already approved' }), { status: 200 });
+    const user = await db.prepare('SELECT id, upline_id, upline_chain, state AS status FROM users WHERE id = ?').bind(params.id).first();
+    if (!user) return error('User not found', 404);
+    if (user.status !== 'pending') return error(`User is already ${user.status}`, 409);
 
-    // 2. Update user status
-    const updateStmts = [];
-    updateStmts.push(db.prepare('UPDATE users SET status = "active" WHERE id = ?').bind(userId));
+    // Only the request that actually flips pending -> active updates the team counts.
+    const flipped = await db.prepare("UPDATE users SET state = 'active', status = 'active' WHERE id = ? AND state = 'pending'").bind(user.id).run();
+    if (!flipped.meta.changes) return error('User was already approved', 409);
 
-    // 3. Process direct_referrals and team_size for upline
-    if (user.upline_id) {
-        // Update direct referrals for immediate upline
-        updateStmts.push(db.prepare('UPDATE user_stats SET direct_referrals = direct_referrals + 1 WHERE user_id = ?').bind(user.upline_id));
-        
-        // Update team size for entire upline chain
-        let uplineChain = [];
-        try {
-            uplineChain = JSON.parse(user.upline_chain || '[]');
-        } catch(e) {}
-        
-        for (const parentId of uplineChain) {
-            updateStmts.push(db.prepare('UPDATE user_stats SET team_size = team_size + 1 WHERE user_id = ?').bind(parentId));
-        }
-    }
+    const statements = teamStatsStatements(db, user, 1);
+    if (statements.length) await db.batch(statements);
 
-    await db.batch(updateStmts);
-
-    return new Response(JSON.stringify({ message: 'User approved' }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    return json({ message: 'User approved' });
+  } catch (err) {
+    return serverError(err, 'Approve user');
   }
 }

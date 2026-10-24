@@ -1,56 +1,49 @@
+import { json, error, serverError, readJson } from '../../../lib/server/http.js';
+import { COURSE_MONEY_FIELDS, toCourseStatus } from '../../../lib/server/catalog.js';
+
+// Admin only (enforced in _middleware.js). Only the fields sent are changed.
 export async function onRequestPut({ params, request, env }) {
-  const courseId = params.id;
-  const {
-    course_name, price, points, commission_pool_percentage, status,
-    comm_jso, comm_so, comm_sop, comm_sdo, comm_platinum
-  } = await request.json();
-  const db = env.DB;
+  const body = await readJson(request);
+  const updates = [];
+  const values = [];
+  const set = (column, value) => { updates.push(`${column} = ?`); values.push(value); };
+
+  if (body.course_name !== undefined) {
+    const name = String(body.course_name).trim();
+    if (!name) return error('Course name is required');
+    set('course_name', name);
+  }
+  if (body.price !== undefined) set('course_price', Math.max(Number(body.price) || 0, 0));
+  if (body.points !== undefined) set('points_per_admission', Math.max(Math.round(Number(body.points) || 0), 0));
+  if (body.status !== undefined) set('status', toCourseStatus(body.status));
+  for (const field of COURSE_MONEY_FIELDS) {
+    if (body[field] !== undefined) set(field, Math.max(Math.round((Number(body[field]) || 0) * 100) / 100, 0));
+  }
+  if (updates.length === 0) return error('No fields to update');
 
   try {
-    await db.prepare(`
-      UPDATE courses
-      SET course_name = ?,
-          course_price = ?,
-          points_per_admission = ?,
-          commission_pool_percentage = ?,
-          status = ?,
-          comm_jso = ?,
-          comm_so = ?,
-          comm_sop = ?,
-          comm_sdo = ?,
-          comm_platinum = ?
-      WHERE course_id = ?
-    `).bind(
-      course_name, price, points, commission_pool_percentage, status,
-      comm_jso || 0, comm_so || 0, comm_sop || 0, comm_sdo || 0, comm_platinum || 0,
-      courseId
-    ).run();
-
-    return new Response(JSON.stringify({ message: 'Course updated' }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    const result = await env.DB.prepare(`UPDATE courses SET ${updates.join(', ')} WHERE course_id = ?`).bind(...values, params.id).run();
+    if (!result.meta.changes) return error('Course not found', 404);
+    return json({ message: 'Course updated' });
+  } catch (err) {
+    return serverError(err, 'Update course');
   }
 }
 
 export async function onRequestDelete({ params, env }) {
-  const courseId = params.id;
   const db = env.DB;
-
   try {
-    // Check if referrals exist
-    const refCount = await db.prepare('SELECT COUNT(*) as count FROM admissions WHERE course_id = ?').bind(courseId).first();
+    const refCount = await db.prepare('SELECT COUNT(*) as count FROM admissions WHERE course_id = ?').bind(params.id).first();
     if (refCount.count > 0) {
-      return new Response(JSON.stringify({ error: 'Cannot delete course with attached referrals' }), { status: 400 });
+      return error('This course has admissions. Mark it inactive instead of deleting it.');
     }
-
-    await db.prepare('DELETE FROM courses WHERE course_id = ?').bind(courseId).run();
-
-    return new Response(JSON.stringify({ message: 'Course deleted' }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    await db.batch([
+      db.prepare('DELETE FROM bonus_campaigns WHERE course_id = ?').bind(params.id),
+      db.prepare('DELETE FROM special_offers WHERE course_id = ?').bind(params.id),
+      db.prepare('DELETE FROM courses WHERE course_id = ?').bind(params.id),
+    ]);
+    return json({ message: 'Course deleted' });
+  } catch (err) {
+    return serverError(err, 'Delete course');
   }
 }

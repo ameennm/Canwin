@@ -1,15 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Wallet, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Wallet, Clock } from 'lucide-react';
 import { api } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
 import Spinner from '../components/Spinner';
 
+const STATUS_STYLES = {
+    pending: 'bg-amber-500/10 text-amber-500',
+    approved: 'bg-blue-500/10 text-blue-500',
+    paid: 'bg-green-500/10 text-green-500',
+    rejected: 'bg-red-500/10 text-red-400',
+};
+
 export default function WithdrawPage({ showToast }) {
     const navigate = useNavigate();
-    const [user, setUser] = useState(null);
     const [balance, setBalance] = useState(0);
+    const [pending, setPending] = useState(0);
+    const [history, setHistory] = useState([]);
     const [amount, setAmount] = useState('');
+    const [method, setMethod] = useState('upi');
+    const [payment, setPayment] = useState({ upi_id: '', bank_name: '', account_number: '', ifsc: '' });
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
@@ -19,15 +29,15 @@ export default function WithdrawPage({ showToast }) {
             navigate('/');
             return;
         }
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        fetchBalance(parsedUser.id);
+        fetchWallet(JSON.parse(storedUser).id);
     }, [navigate]);
 
-    const fetchBalance = async (userId) => {
+    const fetchWallet = async (userId) => {
         try {
             const data = await api.wallet.get(userId);
             setBalance(data.withdrawable_balance || 0);
+            setPending(data.pending_balance || 0);
+            setHistory(data.withdrawals || []);
         } catch (err) {
             console.error('Error fetching balance:', err);
             showToast('Error loading wallet balance', 'error');
@@ -39,20 +49,30 @@ export default function WithdrawPage({ showToast }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         const withdrawAmount = parseFloat(amount);
-        
+
         if (!withdrawAmount || withdrawAmount < 500) {
             showToast('Minimum withdrawal amount is ₹500', 'error');
             return;
         }
-
         if (withdrawAmount > balance) {
             showToast('Insufficient withdrawable balance', 'error');
+            return;
+        }
+        if (method === 'upi' && !payment.upi_id.includes('@')) {
+            showToast('Enter your UPI ID (example: name@okaxis)', 'error');
+            return;
+        }
+        if (method === 'bank' && (!payment.bank_name || !payment.account_number || !payment.ifsc)) {
+            showToast('Enter bank name, account number and IFSC', 'error');
             return;
         }
 
         setSubmitting(true);
         try {
-            await api.wallet.withdraw(user.id, withdrawAmount);
+            const details = method === 'upi'
+                ? { upi_id: payment.upi_id }
+                : { bank_name: payment.bank_name, account_number: payment.account_number, ifsc: payment.ifsc };
+            await api.wallet.withdraw({ amount: withdrawAmount, ...details });
             showToast('Withdrawal request submitted successfully');
             setTimeout(() => navigate('/dashboard'), 1500);
         } catch (err) {
@@ -69,6 +89,20 @@ export default function WithdrawPage({ showToast }) {
             </div>
         );
     }
+
+    const field = (key, label, placeholder, extra = {}) => (
+        <div>
+            <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>{label} <span className="text-red-400">*</span></label>
+            <input
+                value={payment[key]}
+                onChange={(e) => setPayment({ ...payment, [key]: e.target.value })}
+                placeholder={placeholder}
+                className="input-field"
+                disabled={submitting}
+                {...extra}
+            />
+        </div>
+    );
 
     return (
         <div className="min-h-screen py-4 px-4 safe-area-top safe-area-bottom">
@@ -97,6 +131,9 @@ export default function WithdrawPage({ showToast }) {
                     <div>
                         <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1">Withdrawable Balance</p>
                         <h2 className="text-3xl font-black text-blue-500">₹{balance.toLocaleString()}</h2>
+                        {pending > 0 && (
+                            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>₹{pending.toLocaleString()} waiting for payout</p>
+                        )}
                     </div>
                     <Wallet className="w-10 h-10 text-blue-500/50" />
                 </div>
@@ -118,7 +155,7 @@ export default function WithdrawPage({ showToast }) {
                                 disabled={submitting}
                                 min="500"
                                 max={balance}
-                                step="100"
+                                step="1"
                             />
                         </div>
                         <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
@@ -126,9 +163,29 @@ export default function WithdrawPage({ showToast }) {
                         </p>
                     </div>
 
-                    <div className="card bg-amber-500/10 border-amber-500/20 flex gap-3 text-amber-500 text-sm">
-                        <AlertCircle className="w-5 h-5 shrink-0" />
-                        <p>Bank and UPI details are managed externally by the admins. Please ensure your payment details are up to date with your manager.</p>
+                    <div className="card space-y-4">
+                        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Pay me by</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            {[['upi', 'UPI'], ['bank', 'Bank transfer']].map(([value, label]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => setMethod(value)}
+                                    className={method === value ? 'btn-primary py-2 text-sm' : 'btn-secondary py-2 text-sm'}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                        {method === 'upi'
+                            ? field('upi_id', 'UPI ID', 'name@okaxis')
+                            : (
+                                <>
+                                    {field('bank_name', 'Bank name', 'State Bank of India')}
+                                    {field('account_number', 'Account number', '12345678901', { inputMode: 'numeric' })}
+                                    {field('ifsc', 'IFSC code', 'SBIN0001234', { style: { textTransform: 'uppercase' } })}
+                                </>
+                            )}
                     </div>
 
                     <button
@@ -139,6 +196,25 @@ export default function WithdrawPage({ showToast }) {
                         {submitting ? <Spinner size="sm" /> : 'Submit Request'}
                     </button>
                 </form>
+
+                {history.length > 0 && (
+                    <div className="card mt-6">
+                        <p className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                            <Clock className="w-4 h-4" /> Recent requests
+                        </p>
+                        <div className="space-y-2">
+                            {history.map(w => (
+                                <div key={w.id} className="flex items-center justify-between text-sm">
+                                    <div>
+                                        <p className="font-bold" style={{ color: 'var(--text-primary)' }}>₹{Number(w.amount).toLocaleString()}</p>
+                                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{new Date(w.created_at + 'Z').toLocaleDateString()}</p>
+                                    </div>
+                                    <span className={`px-2 py-1 rounded-lg text-xs font-semibold capitalize ${STATUS_STYLES[w.status] || ''}`}>{w.status}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -6,9 +6,10 @@ A referral and commission platform for course admissions. Promoters register stu
 
 - **Promoter hierarchy**: ranks Super Admin → Platinum → SDO → SOP → SO → JSO, each promoter has a referral code and a stored upline chain
 - **Admissions**: promoters submit students; admins approve or reject them
-- **5-level commissions**: per-course fixed payouts for levels 1–5, credited on approval
-- **Bonus campaigns**: time-boxed extra payout for the direct referrer
-- **Points and auto rank-up**: points per admission, automatic promotion at point thresholds
+- **5-level commissions**: per-course fixed payouts for levels 1–5, credited on approval; an optional per-rank amount replaces the level 1 payout. Only active promoters are paid; the Super Admin never takes a commission
+- **Bonus campaigns and special offers**: time-boxed extra level 1 payout (by eligible rank), and per-rank extra amounts until a date
+- **Points and auto rank-up**: points per admission; promotion at 20 / 75 / 200 / 500 points (SO / SOP / SDO / Platinum), capped one rank below the promoter's upline
+- **Registration**: self-sign-up with a referral code starts as a pending JSO until the admin approves it
 - **Wallet**: earnings, withdrawable and pending balances, a commission ledger, withdrawal requests (₹500 minimum)
 - **Admin dashboard**: promoters, admissions, courses, withdrawals, bonuses, offers and stats
 - **ID card**: downloadable PDF
@@ -52,6 +53,8 @@ The Pages project builds from the `main` branch of this repository. To deploy by
 ```bash
 npm run deploy
 ```
+
+**Deploy order matters:** run `npm run db:migrate:remote` before the new code goes live. Migration `0006` adds the `users.state` column the API reads; it only adds columns and tables, so it is safe on live data.
 
 The production environment needs the `JWT_SECRET` secret:
 

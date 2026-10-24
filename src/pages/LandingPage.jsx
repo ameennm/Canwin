@@ -27,7 +27,8 @@ export default function LandingPage({ showToast }) {
         try {
             const data = await api.auth.login(cleanPhone, password);
             localStorage.setItem('canwin_user', JSON.stringify(data.user));
-            localStorage.setItem('canwin_token', data.token);
+            localStorage.setItem('token', data.token);
+            localStorage.removeItem('canwin_admin');
             navigate('/dashboard');
         } catch (err) {
             console.error('Login error:', err);

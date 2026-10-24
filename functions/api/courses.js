@@ -1,67 +1,55 @@
+import { json, error, serverError, readJson, isAdmin } from '../../lib/server/http.js';
+import { COURSE_MONEY_FIELDS, toCourseStatus } from '../../lib/server/catalog.js';
+
+function money(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+}
+
+// Admin only (enforced in _middleware.js).
 export async function onRequestPost({ request, env }) {
-  const { 
-    course_name, price, points,
-    level_1_payout, level_2_payout, level_3_payout, level_4_payout, level_5_payout,
-    comm_jso, comm_so, comm_sop, comm_sdo, comm_platinum
-  } = await request.json();
-  const db = env.DB;
+  const body = await readJson(request);
+  const name = String(body.course_name || '').trim();
+  const price = money(body.price);
+  if (!name) return error('Course name is required');
+
+  const points = Number.isFinite(Number(body.points)) && Number(body.points) >= 0
+    ? Math.round(Number(body.points))
+    : Math.round(price * 0.2);
 
   try {
-    const defaultPoints = price ? Math.round(price * 0.2) : 10;
-
-    const result = await db.prepare(`
+    const result = await env.DB.prepare(`
       INSERT INTO courses (
-        course_name, course_price, points_per_admission, 
-        level_1_payout, level_2_payout, level_3_payout, level_4_payout, level_5_payout,
-        comm_jso, comm_so, comm_sop, comm_sdo, comm_platinum,
+        course_name, course_price, points_per_admission, ${COURSE_MONEY_FIELDS.join(', ')},
         commission_pool_percentage, status
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+      VALUES (?, ?, ?, ${COURSE_MONEY_FIELDS.map(() => '?').join(', ')}, ?, ?)
     `).bind(
-        course_name, price || 0, points || defaultPoints,
-        level_1_payout || 0, level_2_payout || 0, level_3_payout || 0, level_4_payout || 0, level_5_payout || 0,
-        comm_jso || 0, comm_so || 0, comm_sop || 0, comm_sdo || 0, comm_platinum || 0,
-        30
-    )
-      .run();
+      name, price, points, ...COURSE_MONEY_FIELDS.map(f => money(body[f])),
+      price > 0 ? Math.round(COURSE_MONEY_FIELDS.slice(0, 5).reduce((sum, f) => sum + money(body[f]), 0) / price * 10000) / 100 : 0,
+      toCourseStatus(body.status)
+    ).run();
 
-    return new Response(JSON.stringify({ message: 'Course created successfully', id: result.lastRowId }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    return json({ message: 'Course created successfully', id: result.meta.last_row_id });
+  } catch (err) {
+    return serverError(err, 'Create course');
   }
 }
 
-export async function onRequestGet({ request, env }) {
-  const db = env.DB;
-  const url = new URL(request.url);
-  const isAdmin = url.searchParams.get('admin') === 'true';
+export async function onRequestGet({ request, env, data }) {
+  const showAll = new URL(request.url).searchParams.get('admin') === 'true' && isAdmin(data);
 
   try {
-    let query = `
-        SELECT course_id as id, course_name as name, course_price as price, 
-               points_per_admission as points, level_1_payout, level_2_payout, 
-               level_3_payout, level_4_payout, level_5_payout,
-               comm_jso, comm_so, comm_sop, comm_sdo, comm_platinum,
-               status, created_at
-        FROM courses`;
-    
-    if (!isAdmin) {
-      query += ` WHERE status = 'active'`;
-    }
-    
-    query += ` ORDER BY created_at DESC`;
-
-    const courses = await db.prepare(query).all();
-    
-    return new Response(JSON.stringify(courses.results), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    const { results } = await env.DB.prepare(`
+      SELECT course_id as id, course_name as name, course_price as price,
+             points_per_admission as points, ${COURSE_MONEY_FIELDS.join(', ')},
+             status, created_at
+      FROM courses
+      ${showAll ? '' : "WHERE status = 'active'"}
+      ORDER BY created_at DESC
+    `).all();
+    return json(results);
+  } catch (err) {
+    return serverError(err, 'List courses');
   }
 }
