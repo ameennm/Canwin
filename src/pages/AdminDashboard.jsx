@@ -503,9 +503,9 @@ export default function AdminDashboard({ showToast }) {
     };
 
     const getRankIcon = (rank) => {
-        if (rank === 1) return <Crown className="w-5 h-5 text-amber-400" />;
+        if (rank === 1) return <Crown className="w-5 h-5 text-amber-700" />;
         if (rank === 2) return <Medal className="w-5 h-5 text-slate-300" />;
-        if (rank === 3) return <Medal className="w-5 h-5 text-amber-600" />;
+        if (rank === 3) return <Medal className="w-5 h-5 text-amber-700" />;
         return <span className="w-5 h-5 flex items-center justify-center text-xs font-bold" style={{ color: 'var(--text-muted)' }}>{rank}</span>;
     };
 
@@ -525,7 +525,7 @@ export default function AdminDashboard({ showToast }) {
             <header className="glass-dark sticky top-0 z-50 py-3 px-4">
                 <div className="max-w-6xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-purple-500 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-600">
                             <span className="text-white font-bold text-xl">C</span>
                         </div>
                         <div className="hidden sm:block">
@@ -544,12 +544,12 @@ export default function AdminDashboard({ showToast }) {
             <main className="max-w-6xl mx-auto px-4 py-4 space-y-4">
                 {/* Stats */}
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-                    <div className="card text-center p-3"><Megaphone className="w-5 h-5 text-teal-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.totalPromoters}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Promoters</p></div>
-                    <div className="card text-center p-3"><GraduationCap className="w-5 h-5 text-purple-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.totalStudents}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Students</p></div>
-                    <div className="card text-center p-3"><DollarSign className="w-5 h-5 text-green-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>₹{Math.round(stats.revenue)}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Revenue</p></div>
-                    <div className="card text-center p-3 hidden sm:block"><Award className="w-5 h-5 text-amber-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>₹{Math.round(stats.commissions)}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Commissions</p></div>
-                    <div className="card text-center p-3 hidden sm:block"><Zap className="w-5 h-5 text-blue-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>₹{Math.round(stats.profit)}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Profit</p></div>
-                    <div className="card text-center p-3 hidden sm:block"><Star className="w-5 h-5 text-indigo-400 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.paidReferrals}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Paid Ref</p></div>
+                    <div className="card text-center p-3"><Megaphone className="w-5 h-5 text-blue-600 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.totalPromoters}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Promoters</p></div>
+                    <div className="card text-center p-3"><GraduationCap className="w-5 h-5 text-blue-600 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.totalStudents}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Students</p></div>
+                    <div className="card text-center p-3"><DollarSign className="w-5 h-5 text-green-600 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>₹{Math.round(stats.revenue)}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Revenue</p></div>
+                    <div className="card text-center p-3 hidden sm:block"><Award className="w-5 h-5 text-amber-700 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>₹{Math.round(stats.commissions)}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Commissions</p></div>
+                    <div className="card text-center p-3 hidden sm:block"><Zap className="w-5 h-5 text-blue-600 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>₹{Math.round(stats.profit)}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Profit</p></div>
+                    <div className="card text-center p-3 hidden sm:block"><Star className="w-5 h-5 text-blue-600 mx-auto mb-1" /><p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.paidReferrals}</p><p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Paid Admissions</p></div>
                 </div>
 
                 {/* Search */}
@@ -567,9 +567,9 @@ export default function AdminDashboard({ showToast }) {
                         { id: 'analytics', icon: BarChart3, label: 'Analytics' },
                         { id: 'promoters', icon: Megaphone, label: 'Promoters', badge: allPromoters.filter(p => p.status === 'active' || p.status === 'suspended' || p.rank === 'Super Admin').length },
                         { id: 'students', icon: GraduationCap, label: 'Students', badge: stats.totalStudents },
-                        { id: 'finance', icon: DollarSign, label: 'Finance', badge: withdrawals.filter(w => w.status === 'pending').length, highlight: withdrawals.some(w => w.status === 'pending') },
-                        { id: 'approvals', icon: UserCheck, label: 'Approvals', badge: pendingPromoters.length, highlight: pendingPromoters.length > 0 },
-                        { id: 'referrals', icon: Award, label: 'Referrals', badge: pendingReferrals.length, highlight: pendingReferrals.length > 0 },
+                        { id: 'finance', icon: DollarSign, label: 'Withdrawals', badge: withdrawals.filter(w => w.status === 'pending').length, highlight: withdrawals.some(w => w.status === 'pending') },
+                        { id: 'approvals', icon: UserCheck, label: 'New Promoters', badge: pendingPromoters.length, highlight: pendingPromoters.length > 0 },
+                        { id: 'referrals', icon: Award, label: 'Admissions', badge: pendingReferrals.length, highlight: pendingReferrals.length > 0 },
                         { id: 'bonuses', icon: Gift, label: 'Bonuses' },
                         { id: 'courses', icon: BookOpen, label: 'Courses' },
                     ].map(tab => (
@@ -577,7 +577,7 @@ export default function AdminDashboard({ showToast }) {
                             <span className="flex items-center gap-2">
                                 <tab.icon className="w-4 h-4" />
                                 <span className="hidden sm:inline">{tab.label}</span>
-                                {tab.badge !== undefined && <span className={`text-xs px-1.5 py-0.5 rounded-full ${tab.highlight ? 'bg-amber-500 text-white' : 'bg-teal-500 text-white'}`}>{tab.badge}</span>}
+                                {tab.badge !== undefined && <span className={`text-xs px-1.5 py-0.5 rounded-full ${tab.highlight ? 'bg-amber-600 text-white' : 'bg-blue-600 text-white'}`}>{tab.badge}</span>}
                             </span>
                         </button>
                     ))}
@@ -588,7 +588,7 @@ export default function AdminDashboard({ showToast }) {
                     <div className="space-y-4">
                         {/* Monthly Chart */}
                         <div className="card">
-                            <h3 className="font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><TrendingUp className="w-5 h-5 text-teal-400" />Monthly Referrals (Last 6 Months)</h3>
+                            <h3 className="font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><TrendingUp className="w-5 h-5 text-blue-600" />Approved Admissions (Last 6 Months)</h3>
                             <div className="chart-container">
                                 <div className="bar-chart">
                                     {monthlyData.map((d, i) => (
@@ -607,7 +607,7 @@ export default function AdminDashboard({ showToast }) {
                         {/* Monthly Top Performers */}
                         <div className="card">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><Trophy className="w-5 h-5 text-amber-400" />Top Promoters</h3>
+                                <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><Trophy className="w-5 h-5 text-amber-700" />Top Promoters</h3>
                                 <select value={selectedMonth} onChange={(e) => { setSelectedMonth(e.target.value); fetchMonthlyTopPromoters(e.target.value); fetchCourseAnalytics(e.target.value); }} className="input-field text-sm py-2 px-3" style={{ width: 'auto' }}>
                                     {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                                 </select>
@@ -621,9 +621,9 @@ export default function AdminDashboard({ showToast }) {
                                             <div className="w-8 flex justify-center">{getRankIcon(i + 1)}</div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
-                                                <p className="text-xs text-teal-400">{p.referral_code} • {p.count} referrals</p>
+                                                <p className="text-xs text-blue-600">{p.referral_code} • {p.count} admissions</p>
                                             </div>
-                                            <span className="text-amber-400 font-bold">{p.points} pts</span>
+                                            <span className="text-amber-700 font-bold">{p.points} pts</span>
                                         </div>
                                     ))}
                                 </div>
@@ -633,7 +633,7 @@ export default function AdminDashboard({ showToast }) {
                         {/* Course Analytics */}
                         <div className="card">
                             <h3 className="font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                <BookOpen className="w-5 h-5 text-purple-400" />
+                                <BookOpen className="w-5 h-5 text-blue-600" />
                                 Course Admissions
                                 <span className="text-xs font-normal px-2 py-0.5 rounded-full" style={{ background: 'var(--hover-bg)', color: 'var(--text-muted)' }}>
                                     {monthOptions.find(m => m.value === selectedMonth)?.label}
@@ -646,21 +646,21 @@ export default function AdminDashboard({ showToast }) {
                                     {courseAnalytics.map((course, i) => (
                                         <div key={course.id} className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
                                             <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold" style={{
-                                                background: i === 0 ? 'rgba(245, 158, 11, 0.2)' : i === 1 ? 'rgba(148, 163, 184, 0.2)' : i === 2 ? 'rgba(205, 127, 50, 0.2)' : 'var(--bg-secondary)',
-                                                color: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#cd7f32' : 'var(--text-muted)'
+                                                background: i === 0 ? 'rgba(217, 119, 6, 0.12)' : i === 1 ? 'rgba(148, 163, 184, 0.2)' : i === 2 ? 'rgba(205, 127, 50, 0.2)' : 'var(--bg-slate-100)',
+                                                color: i === 0 ? '#b45309' : i === 1 ? '#94a3b8' : i === 2 ? '#cd7f32' : 'var(--text-muted)'
                                             }}>
                                                 #{i + 1}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{course.name}</p>
                                                 <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className={`text-xs px-1.5 py-0.5 rounded ${course.price > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400'}`}>
+                                                    <span className={`text-xs px-1.5 py-0.5 rounded ${course.price > 0 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-600'}`}>
                                                         {course.price > 0 ? `₹${course.price}` : 'Free'}
                                                     </span>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-lg font-bold text-teal-400">{course.admissions}</p>
+                                                <p className="text-lg font-bold text-blue-600">{course.admissions}</p>
                                                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>sold</p>
                                             </div>
                                         </div>
@@ -681,31 +681,31 @@ export default function AdminDashboard({ showToast }) {
                             </button>
                         </div>
                         {filterPromoters(allPromoters.filter(p => p.status === 'active' || p.status === 'suspended' || p.rank === 'Super Admin')).length === 0 ? (
-                            <div className="card text-center py-8"><Megaphone className="w-10 h-10 text-teal-400 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No promoters found</p></div>
+                            <div className="card text-center py-8"><Megaphone className="w-10 h-10 text-blue-600 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No promoters found</p></div>
                         ) : (
                             <div className="cards-grid">
                                 {filterPromoters(allPromoters.filter(p => p.status === 'active' || p.status === 'suspended' || p.rank === 'Super Admin')).map(p => {
                                     const referrer = getReferrerName(p);
                                     return (
-                                        <div key={p.id} className="card cursor-pointer hover:border-teal-500/30 transition-all group" onClick={() => fetchPromoterDetails(p)}>
+                                        <div key={p.id} className="card cursor-pointer hover:border-slate-300 transition-all group" onClick={() => fetchPromoterDetails(p)}>
                                             <div className="flex justify-between items-start mb-3">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-teal-500/10">
-                                                        <User className="w-5 h-5 text-teal-400" />
+                                                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-50">
+                                                        <User className="w-5 h-5 text-blue-600" />
                                                     </div>
                                                     <div>
                                                         <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{p.name}</h3>
-                                                        <p className="text-xs font-mono text-teal-400">{p.referral_code}</p>
-                                                        {p.status === 'suspended' && <span className="text-[10px] font-bold uppercase text-red-400">Suspended</span>}
+                                                        <p className="text-xs font-mono text-blue-600">{p.referral_code}</p>
+                                                        {p.status === 'suspended' && <span className="text-[10px] font-bold uppercase text-red-600">Suspended</span>}
                                                     </div>
                                                 </div>
                                                 <LevelBadge level={p.rank} size="sm" />
                                             </div>
                                             
-                                            <div className="grid grid-cols-3 gap-1 py-3 border-y border-white/5 my-2">
+                                            <div className="grid grid-cols-3 gap-1 py-3 border-y border-slate-200 my-2">
                                                 <div>
                                                     <p className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Points</p>
-                                                    <p className="font-bold text-amber-400 text-sm">{p.total_points || 0}</p>
+                                                    <p className="font-bold text-amber-700 text-sm">{p.total_points || 0}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Team</p>
@@ -713,7 +713,7 @@ export default function AdminDashboard({ showToast }) {
                                                 </div>
                                                 <div>
                                                     <p className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Admissions</p>
-                                                    <p className="font-bold text-teal-400 text-sm">{p.total_admissions || 0}</p>
+                                                    <p className="font-bold text-blue-600 text-sm">{p.total_admissions || 0}</p>
                                                 </div>
                                             </div>
 
@@ -727,7 +727,7 @@ export default function AdminDashboard({ showToast }) {
                                                     {p.rank !== 'Super Admin' && (
                                                         <button 
                                                             onClick={(e) => { e.stopPropagation(); handleDeleteUser(p.id, p.name); }}
-                                                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
                                                             title="Delete Promoter"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
@@ -749,17 +749,17 @@ export default function AdminDashboard({ showToast }) {
                     <div className="space-y-4">
                         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Students are people referred to courses by promoters. Click to see details.</p>
                         {filterStudents(allStudents).length === 0 ? (
-                            <div className="card text-center py-8"><GraduationCap className="w-10 h-10 text-purple-400 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No students found</p></div>
+                            <div className="card text-center py-8"><GraduationCap className="w-10 h-10 text-blue-600 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No students found</p></div>
                         ) : (
                             <div className="cards-grid">
                                 {filterStudents(allStudents).map(s => (
-                                    <div key={s.id} className="card cursor-pointer hover:border-purple-500/30 transition-all group" onClick={() => fetchStudentDetails(s)}>
+                                    <div key={s.id} className="card cursor-pointer hover:border-slate-300 transition-all group" onClick={() => fetchStudentDetails(s)}>
                                         <div className="flex justify-between items-start mb-3">
                                             <div>
                                                 <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{s.student_name}</h3>
                                                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{s.student_phone}</p>
                                             </div>
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${s.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${s.status === 'approved' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-700'}`}>
                                                 {s.status}
                                             </span>
                                         </div>
@@ -767,17 +767,17 @@ export default function AdminDashboard({ showToast }) {
                                         <div className="space-y-2 mb-3">
                                             <div className="flex justify-between items-center">
                                                 <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Course</span>
-                                                <span className="text-xs px-2 py-0.5 rounded font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                                                <span className="text-xs px-2 py-0.5 rounded font-medium bg-blue-50 text-blue-600 border border-blue-200">
                                                     {s.course_name}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Referred By</span>
-                                                <span className="text-xs font-semibold text-teal-400">{s.admitted_by_name}</span>
+                                                <span className="text-xs font-semibold text-blue-600">{s.admitted_by_name}</span>
                                             </div>
                                         </div>
 
-                                        <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                                        <div className="flex justify-between items-center pt-2 border-t border-slate-200">
                                             <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{formatDate(s.created_at)}</span>
                                             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" style={{ color: 'var(--text-muted)' }} />
                                         </div>
@@ -792,7 +792,7 @@ export default function AdminDashboard({ showToast }) {
                 {activeTab === 'approvals' && (
                     <div className="space-y-4">
                         {pendingPromoters.length === 0 ? (
-                            <div className="card text-center py-8"><CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No pending approvals</p></div>
+                            <div className="card text-center py-8"><CheckCircle className="w-10 h-10 text-green-600 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No new promoters waiting for approval</p></div>
                         ) : (
                             <div className="cards-grid">
                                 {pendingPromoters.map(u => {
@@ -800,13 +800,13 @@ export default function AdminDashboard({ showToast }) {
                                     return (
                                         <div key={u.id} className="card">
                                             <div className="flex items-start gap-3">
-                                                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ border: '2px solid var(--border-color)', background: 'var(--bg-secondary)' }}><User className="w-6 h-6" style={{ color: 'var(--text-muted)' }} /></div>
+                                                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ border: '2px solid var(--border-color)', background: 'var(--bg-slate-100)' }}><User className="w-6 h-6" style={{ color: 'var(--text-muted)' }} /></div>
                                                 <div className="flex-1">
                                                     <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{u.name}</h3>
                                                     <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{u.phone}</p>
                                                     {referrer && (
                                                         <p className="text-xs mt-1">
-                                                            <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">
+                                                            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
                                                                 <Link2 className="w-3 h-3 inline mr-1" />Referred by: {referrer.referral_code || referrer.name}
                                                             </span>
                                                         </p>
@@ -829,14 +829,14 @@ export default function AdminDashboard({ showToast }) {
                 {activeTab === 'referrals' && (
                     <div className="space-y-4">
                         {pendingReferrals.length === 0 ? (
-                            <div className="card text-center py-8"><CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No pending referrals</p></div>
+                            <div className="card text-center py-8"><CheckCircle className="w-10 h-10 text-green-600 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No admissions waiting for approval</p></div>
                         ) : (
                             <div className="cards-grid">
                                 {pendingReferrals.map(ref => (
                                     <div key={ref.id} className="card">
                                         <div className="flex justify-between items-start mb-2">
-                                            <div><p className="font-medium" style={{ color: 'var(--text-primary)' }}>{ref.admitted_by_name}</p><p className="text-xs text-teal-400">{ref.admitted_by_code} • {ref.admitted_by_rank}</p></div>
-                                            <span className="badge text-xs bg-amber-500/20 text-amber-400">Pending</span>
+                                            <div><p className="font-medium" style={{ color: 'var(--text-primary)' }}>{ref.admitted_by_name}</p><p className="text-xs text-blue-600">{ref.admitted_by_code} • {ref.admitted_by_rank}</p></div>
+                                            <span className="badge text-xs bg-amber-50 text-amber-700">Pending</span>
                                         </div>
                                         <div className="rounded-lg p-2 mt-2 text-sm" style={{ background: 'var(--hover-bg)' }}>
                                             <p style={{ color: 'var(--text-primary)' }}>{ref.student_name}</p>
@@ -860,7 +860,7 @@ export default function AdminDashboard({ showToast }) {
                         <button onClick={() => { setEditingCourse(null); setCourseForm({ name: '', description: '', points: 10, level_1_payout: 0, level_2_payout: 0, level_3_payout: 0, level_4_payout: 0, level_5_payout: 0, price: 0, is_active: true, comm_jso: 0, comm_so: 0, comm_sop: 0, comm_sdo: 0, comm_platinum: 0 }); setShowCourseModal(true); }} className="btn-primary flex items-center gap-2"><Plus className="w-5 h-5" />Add Course</button>
                         <div className="cards-grid">
                             {courses.map(c => (
-                                <div key={c.id} className="card hover:border-teal-500/30 transition-all">
+                                <div key={c.id} className="card hover:border-slate-300 transition-all">
                                     <div className="flex justify-between items-start mb-2">
                                         <h4 className="font-semibold text-lg" style={{ color: 'var(--text-primary)' }}>{c.name}</h4>
                                         <span className={`badge text-xs ${c.price > 0 ? 'badge-paid' : 'badge-free'}`}>
@@ -870,19 +870,19 @@ export default function AdminDashboard({ showToast }) {
                                     <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{c.description || 'No description'}</p>
 
                                     <div className="grid grid-cols-2 gap-2 mb-3 p-2 rounded-lg text-xs" style={{ background: 'var(--hover-bg)' }}>
-                                        <div><span style={{ color: 'var(--text-muted)' }}>L1 Payout:</span> <span className="text-green-400 font-bold ml-1">₹{c.level_1_payout || 0}</span></div>
-                                        <div><span style={{ color: 'var(--text-muted)' }}>Reward:</span> <span className="text-teal-400 font-bold ml-1">{c.points} pts</span></div>
+                                        <div><span style={{ color: 'var(--text-muted)' }}>L1 Payout:</span> <span className="text-green-600 font-bold ml-1">₹{c.level_1_payout || 0}</span></div>
+                                        <div><span style={{ color: 'var(--text-muted)' }}>Reward:</span> <span className="text-blue-600 font-bold ml-1">{c.points} pts</span></div>
                                     </div>
 
                                     {(c.comm_jso > 0 || c.comm_so > 0) && (
                                         <div className="flex flex-wrap gap-1 mb-3 text-[10px]">
-                                            {c.comm_jso > 0 && <span className="text-amber-400 bg-amber-500/10 px-1 rounded">JSO:₹{c.comm_jso}</span>}
-                                            {c.comm_so > 0 && <span className="text-amber-400 bg-amber-500/10 px-1 rounded">SO:₹{c.comm_so}</span>}
+                                            {c.comm_jso > 0 && <span className="text-amber-700 bg-amber-50 px-1 rounded">JSO:₹{c.comm_jso}</span>}
+                                            {c.comm_so > 0 && <span className="text-amber-700 bg-amber-50 px-1 rounded">SO:₹{c.comm_so}</span>}
                                         </div>
                                     )}
 
                                     <div className="flex justify-between items-center">
-                                        <span className={`text-xs font-semibold ${c.status === 'active' ? 'text-green-400' : 'text-red-400'}`}>
+                                        <span className={`text-xs font-semibold ${c.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
                                             {c.status === 'active' ? 'ACTIVE' : c.schedule_status === 'closed' ? 'CLOSED' : 'INACTIVE'}
                                         </span>
                                         <div className="flex gap-2 items-center">
@@ -906,8 +906,8 @@ export default function AdminDashboard({ showToast }) {
                                                     comm_platinum: c.comm_platinum || 0
                                                 }); 
                                                 setShowCourseModal(true); 
-                                            }} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: 'var(--text-secondary)' }}><Edit2 className="w-4 h-4" /></button>
-                                            <button onClick={() => handleDeleteCourse(c.id, c.name)} disabled={actionLoading === `del-c-${c.id}`} className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400" style={{ color: 'var(--text-secondary)' }}>
+                                            }} className="p-1.5 rounded-lg hover:bg-slate-100" style={{ color: 'var(--text-secondary)' }}><Edit2 className="w-4 h-4" /></button>
+                                            <button onClick={() => handleDeleteCourse(c.id, c.name)} disabled={actionLoading === `del-c-${c.id}`} className="p-1.5 rounded-lg hover:bg-red-50 text-red-600" style={{ color: 'var(--text-secondary)' }}>
                                                 {actionLoading === `del-c-${c.id}` ? <Spinner size="sm" /> : <Trash2 className="w-4 h-4" />}
                                             </button>
                                         </div>
@@ -920,7 +920,7 @@ export default function AdminDashboard({ showToast }) {
                         <div className="mt-6">
                             <div className="flex justify-between items-center mb-3">
                                 <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                    <Zap className="w-5 h-5 text-amber-400" /> Special Offers
+                                    <Zap className="w-5 h-5 text-amber-700" /> Special Offers
                                 </h3>
                                 <button onClick={() => setShowOfferModal(true)} className="btn-primary py-1.5 px-3 text-sm flex items-center gap-1">
                                     <Plus className="w-4 h-4" /> Create Offer
@@ -937,12 +937,12 @@ export default function AdminDashboard({ showToast }) {
                                                 <tr key={o.offer_id}>
                                                     <td className="font-medium">{o.course_name}</td>
                                                     <td>{formatDate(o.valid_until)}</td>
-                                                    <td className="text-amber-400">Rs.{o.jso_amount}</td>
-                                                    <td className="text-amber-400">Rs.{o.so_amount}</td>
-                                                    <td className="text-amber-400">Rs.{o.sop_amount}</td>
-                                                    <td className="text-amber-400">Rs.{o.sdo_amount}</td>
-                                                    <td className="text-amber-400">Rs.{o.platinum_amount}</td>
-                                                    <td><span className={`text-xs px-2 py-1 rounded ${o.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{o.isActive ? 'Active' : 'Inactive'}</span></td>
+                                                    <td className="text-amber-700">Rs.{o.jso_amount}</td>
+                                                    <td className="text-amber-700">Rs.{o.so_amount}</td>
+                                                    <td className="text-amber-700">Rs.{o.sop_amount}</td>
+                                                    <td className="text-amber-700">Rs.{o.sdo_amount}</td>
+                                                    <td className="text-amber-700">Rs.{o.platinum_amount}</td>
+                                                    <td><span className={`text-xs px-2 py-1 rounded ${o.isActive ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>{o.isActive ? 'Active' : 'Inactive'}</span></td>
                                                     <td><button onClick={() => handleDeleteOffer(o.offer_id)} disabled={actionLoading === `del-offer-${o.offer_id}`} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button></td>
                                                 </tr>
                                             ))}
@@ -958,7 +958,7 @@ export default function AdminDashboard({ showToast }) {
                 {activeTab === 'bonuses' && (
                     <div className="card">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><Gift className="w-5 h-5 text-purple-400" />Bonus Campaigns</h3>
+                            <h3 className="font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><Gift className="w-5 h-5 text-blue-600" />Bonus Campaigns</h3>
                             <button onClick={() => setShowBonusModal(true)} className="btn-primary py-2 px-4 text-sm flex items-center gap-2">
                                 <Plus className="w-4 h-4" /> Create Campaign
                             </button>
@@ -985,9 +985,9 @@ export default function AdminDashboard({ showToast }) {
                                         const isUpcoming = now < start;
                                         
                                         return (
-                                            <tr key={b.bonus_id} className="hover:bg-white/5">
+                                            <tr key={b.bonus_id} className="hover:bg-slate-100">
                                                 <td className="px-4 py-4 font-medium" style={{ color: 'var(--text-primary)' }}>{b.course_name}</td>
-                                                <td className="px-4 py-4 font-bold text-amber-400">₹{b.bonus_amount}</td>
+                                                <td className="px-4 py-4 font-bold text-amber-700">₹{b.bonus_amount}</td>
                                                 <td className="px-4 py-4 text-xs font-semibold">{b.eligible_roles}</td>
                                                 <td className="px-4 py-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
                                                     {formatDate(b.start_time)} - {formatDate(b.end_time)}
@@ -995,26 +995,26 @@ export default function AdminDashboard({ showToast }) {
                                                 <td className="px-4 py-4">
                                                     <div className="flex items-center gap-2">
                                                         <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${
-                                                            b.status === 'active' && isActive ? 'bg-green-500/20 text-green-400' :
-                                                            b.status === 'active' && isUpcoming ? 'bg-blue-500/20 text-blue-400' :
+                                                            b.status === 'active' && isActive ? 'bg-green-50 text-green-600' :
+                                                            b.status === 'active' && isUpcoming ? 'bg-blue-50 text-blue-600' :
                                                             b.status === 'inactive' ? 'bg-gray-500/20 text-gray-400' :
-                                                            'bg-red-500/20 text-red-400'
+                                                            'bg-red-50 text-red-600'
                                                         }`}>
                                                             {b.status === 'inactive' ? 'Deactivated' : (isActive ? 'Active' : isUpcoming ? 'Upcoming' : 'Expired')}
                                                         </span>
                                                         <button 
                                                             onClick={() => handleToggleBonusStatus(b.id || b.bonus_id, b.status)}
                                                             disabled={actionLoading === `bonus-toggle-${b.id || b.bonus_id}`}
-                                                            className="p-1 rounded hover:bg-white/5"
+                                                            className="p-1 rounded hover:bg-slate-100"
                                                             title={b.status === 'active' ? 'Deactivate' : 'Activate'}
                                                         >
                                                             {actionLoading === `bonus-toggle-${b.id || b.bonus_id}` ? <Spinner size="sm" /> : 
-                                                                (b.status === 'active' ? <RefreshCw className="w-3 h-3 text-amber-400" /> : <RefreshCw className="w-3 h-3 text-green-400" />)}
+                                                                (b.status === 'active' ? <RefreshCw className="w-3 h-3 text-amber-700" /> : <RefreshCw className="w-3 h-3 text-green-600" />)}
                                                         </button>
                                                         <button 
                                                             onClick={() => handleDeleteBonus(b.id || b.bonus_id)}
                                                             disabled={actionLoading === `bonus-del-${b.id || b.bonus_id}`}
-                                                            className="p-1 rounded hover:bg-red-500/10 text-red-400"
+                                                            className="p-1 rounded hover:bg-red-50 text-red-600"
                                                             title="Delete Campaign"
                                                         >
                                                             {actionLoading === `bonus-del-${b.id || b.bonus_id}` ? <Spinner size="sm" /> : <Trash2 className="w-3 h-3" />}
@@ -1032,10 +1032,10 @@ export default function AdminDashboard({ showToast }) {
                 {activeTab === 'finance' && (
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
-                            <h3 className="font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><Wallet className="w-5 h-5 text-teal-400" />Withdrawal Requests</h3>
+                            <h3 className="font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><Wallet className="w-5 h-5 text-blue-600" />Withdrawal Requests</h3>
                         </div>
                         {withdrawals.length === 0 ? (
-                            <div className="card text-center py-8"><Clock className="w-10 h-10 text-teal-400 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No withdrawal requests found</p></div>
+                            <div className="card text-center py-8"><Clock className="w-10 h-10 text-blue-600 mx-auto mb-3" /><p style={{ color: 'var(--text-secondary)' }}>No withdrawal requests found</p></div>
                         ) : (
                             <div className="cards-grid">
                                 {withdrawals.map(w => (
@@ -1046,18 +1046,18 @@ export default function AdminDashboard({ showToast }) {
                                                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{w.user_phone}</p>
                                             </div>
                                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                                                w.status === 'paid' ? 'bg-green-500/20 text-green-400' :
-                                                w.status === 'approved' ? 'bg-blue-500/20 text-blue-400' :
-                                                w.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
-                                                'bg-amber-500/20 text-amber-400'
+                                                w.status === 'paid' ? 'bg-green-50 text-green-600' :
+                                                w.status === 'approved' ? 'bg-blue-50 text-blue-600' :
+                                                w.status === 'rejected' ? 'bg-red-50 text-red-600' :
+                                                'bg-amber-50 text-amber-700'
                                             }`}>
                                                 {w.status}
                                             </span>
                                         </div>
                                         
-                                        <div className="flex justify-between items-center py-3 border-y border-white/5 my-2">
+                                        <div className="flex justify-between items-center py-3 border-y border-slate-200 my-2">
                                             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Amount Requested</span>
-                                            <span className="text-lg font-bold text-emerald-500">₹{w.amount}</span>
+                                            <span className="text-lg font-bold text-green-600">₹{w.amount}</span>
                                         </div>
 
                                         <div className="text-xs mb-3 p-2 rounded-lg" style={{ background: 'var(--hover-bg)', color: 'var(--text-secondary)' }}>
@@ -1076,17 +1076,17 @@ export default function AdminDashboard({ showToast }) {
                                             {w.status === 'pending' && (
                                                 <>
                                                     <button onClick={() => handleUpdateWithdrawal(w.id, 'approved')} disabled={actionLoading === `wd-${w.id}`} className="btn-primary py-2 text-xs flex-1">Approve</button>
-                                                    <button onClick={() => handleUpdateWithdrawal(w.id, 'rejected')} disabled={actionLoading === `wd-${w.id}`} className="btn-secondary py-2 text-xs border-red-500/30 text-red-400">Reject</button>
+                                                    <button onClick={() => handleUpdateWithdrawal(w.id, 'rejected')} disabled={actionLoading === `wd-${w.id}`} className="btn-secondary py-2 text-xs border-red-200 text-red-600">Reject</button>
                                                 </>
                                             )}
                                             {w.status === 'approved' && (
                                                 <>
                                                     <button onClick={() => handleUpdateWithdrawal(w.id, 'paid')} disabled={actionLoading === `wd-${w.id}`} className="btn-success py-2 text-xs flex-1">Mark as PAID</button>
-                                                    <button onClick={() => handleUpdateWithdrawal(w.id, 'rejected')} disabled={actionLoading === `wd-${w.id}`} className="btn-secondary py-2 text-xs border-red-500/30 text-red-400">Reject</button>
+                                                    <button onClick={() => handleUpdateWithdrawal(w.id, 'rejected')} disabled={actionLoading === `wd-${w.id}`} className="btn-secondary py-2 text-xs border-red-200 text-red-600">Reject</button>
                                                 </>
                                             )}
                                             {w.status === 'paid' && (
-                                                <div className="text-center w-full py-2 text-[10px] font-bold text-green-400 bg-green-500/10 rounded-lg">TRANSACTION SETTLED</div>
+                                                <div className="text-center w-full py-2 text-[10px] font-bold text-green-600 bg-green-50 rounded-lg">TRANSACTION SETTLED</div>
                                             )}
                                         </div>
                                     </div>
@@ -1106,12 +1106,12 @@ export default function AdminDashboard({ showToast }) {
                             <div className="flex items-center gap-2">
                                 {selectedStudent.status === 'pending' && <button 
                                     onClick={() => handleEditAdmission(selectedStudent)}
-                                    className="p-2 rounded-lg bg-teal-500/10 text-teal-400 hover:bg-teal-500/20"
+                                    className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-50"
                                     title="Edit Student Info"
                                 >
                                     <Edit2 className="w-4 h-4" />
                                 </button>}
-                                <button onClick={() => setSelectedStudent(null)} className="p-2 rounded-lg hover:bg-white/5">
+                                <button onClick={() => setSelectedStudent(null)} className="p-2 rounded-lg hover:bg-slate-100">
                                     <X className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
                                 </button>
                             </div>
@@ -1126,8 +1126,8 @@ export default function AdminDashboard({ showToast }) {
                                 {studentDetails.map(d => (
                                     <div key={d.id} className="p-3 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
                                         <div className="flex justify-between"><span className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.course_name}</span><span className={`badge text-xs ${d.price > 0 ? 'badge-paid' : 'badge-free'}`}>{d.price > 0 ? `Paid` : 'Free'}</span></div>
-                                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Referred by: <span className="text-teal-400">{d.admitted_by_name}</span></p>
-                                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Date: {formatDate(d.created_at)} • Status: <span className={d.status === 'approved' ? 'text-green-400' : 'text-amber-400'}>{d.status}</span></p>
+                                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Referred by: <span className="text-blue-600">{d.admitted_by_name}</span></p>
+                                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Date: {formatDate(d.created_at)} • Status: <span className={d.status === 'approved' ? 'text-green-600' : 'text-amber-700'}>{d.status}</span></p>
                                     </div>
                                 ))}
                             </div>
@@ -1145,12 +1145,12 @@ export default function AdminDashboard({ showToast }) {
                             <div className="flex items-center gap-2">
                                 <button 
                                     onClick={() => handleEditUser(selectedPromoter)}
-                                    className="p-2 rounded-lg bg-teal-500/10 text-teal-400 hover:bg-teal-500/20"
+                                    className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-50"
                                     title="Edit Credentials"
                                 >
                                     <Edit2 className="w-4 h-4" />
                                 </button>
-                                <button onClick={() => setSelectedPromoter(null)} className="p-2 rounded-lg hover:bg-white/5">
+                                <button onClick={() => setSelectedPromoter(null)} className="p-2 rounded-lg hover:bg-slate-100">
                                     <X className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
                                 </button>
                             </div>
@@ -1158,46 +1158,46 @@ export default function AdminDashboard({ showToast }) {
 
                         {/* Promoter Header Info */}
                         <div className="flex items-center gap-4 p-4 rounded-xl mb-4" style={{ background: 'var(--hover-bg)' }}>
-                            <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ border: '3px solid var(--primary)', background: 'var(--bg-secondary)' }}>
+                            <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ border: '3px solid var(--primary)', background: 'var(--bg-slate-100)' }}>
                                 <User className="w-6 h-6" style={{ color: 'var(--text-muted)' }} />
                             </div>
                             <div className="flex-1">
                                 <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{selectedPromoter.name}</p>
-                                <p className="text-teal-400 font-mono text-sm">{selectedPromoter.referral_code}</p>
+                                <p className="text-blue-600 font-mono text-sm">{selectedPromoter.referral_code}</p>
                                 <div className="flex items-center gap-3 mt-1">
                                     <LevelBadge level={selectedPromoter.rank} size="sm" />
-                                    <span className="text-amber-400 font-semibold">{selectedPromoter.total_points || 0} pts</span>
+                                    <span className="text-amber-700 font-semibold">{selectedPromoter.total_points || 0} pts</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Financial Stats */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-                            <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
-                                <p className="text-[10px] uppercase font-bold text-green-400 mb-1">Total Earned</p>
-                                <p className="text-xl font-black text-green-400">₹{selectedPromoter.total_earnings || 0}</p>
+                            <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-center">
+                                <p className="text-[10px] uppercase font-bold text-green-600 mb-1">Total Earned</p>
+                                <p className="text-xl font-black text-green-600">₹{selectedPromoter.total_earnings || 0}</p>
                             </div>
-                            <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center">
-                                <p className="text-[10px] uppercase font-bold text-blue-400 mb-1">Total Paid</p>
-                                <p className="text-xl font-black text-blue-400">₹{selectedPromoter.total_paid || 0}</p>
+                            <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-center">
+                                <p className="text-[10px] uppercase font-bold text-blue-600 mb-1">Total Paid</p>
+                                <p className="text-xl font-black text-blue-600">₹{selectedPromoter.total_paid || 0}</p>
                             </div>
-                            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
-                                <p className="text-[10px] uppercase font-bold text-amber-400 mb-1">Wallet (Bal)</p>
-                                <p className="text-xl font-black text-amber-400">₹{selectedPromoter.wallet_balance || 0}</p>
+                            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-center">
+                                <p className="text-[10px] uppercase font-bold text-amber-700 mb-1">Wallet (Bal)</p>
+                                <p className="text-xl font-black text-amber-700">₹{selectedPromoter.wallet_balance || 0}</p>
                             </div>
-                            <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-center">
-                                <p className="text-[10px] uppercase font-bold text-purple-400 mb-1">Team Size</p>
-                                <p className="text-xl font-black text-purple-400">{selectedPromoter.team_size || 0}</p>
+                            <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-center">
+                                <p className="text-[10px] uppercase font-bold text-blue-600 mb-1">Team Size</p>
+                                <p className="text-xl font-black text-blue-600">{selectedPromoter.team_size || 0}</p>
                             </div>
                         </div>
 
                         {/* Hierarchy Tracking */}
-                        <div className="p-4 rounded-xl mb-4 border border-white/5" style={{ background: 'var(--hover-bg)' }}>
+                        <div className="p-4 rounded-xl mb-4 border border-slate-200" style={{ background: 'var(--hover-bg)' }}>
                             <h4 className="text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
                                 <TrendingUp className="w-4 h-4" /> Upline Hierarchy (Lineage)
                             </h4>
                             <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-xs font-bold px-2 py-1 bg-white/5 rounded text-teal-400">CORE</span>
+                                <span className="text-xs font-bold px-2 py-1 bg-slate-100 rounded text-blue-600">CORE</span>
                                 {(() => {
                                     try {
                                         const chain = typeof selectedPromoter.upline_chain === 'string' 
@@ -1206,14 +1206,14 @@ export default function AdminDashboard({ showToast }) {
                                         const displayChain = [...chain].reverse();
                                         return displayChain.map((uId, idx) => (
                                             <React.Fragment key={uId}>
-                                                <ChevronRight className="w-3 h-3 text-white/20" />
-                                                <span className="text-xs px-2 py-1 bg-white/5 rounded font-mono text-purple-400" title={`User ID: ${uId}`}>{allPromoters.find(p => p.id === uId)?.name || `#${uId}`}</span>
+                                                <ChevronRight className="w-3 h-3 text-slate-400" />
+                                                <span className="text-xs px-2 py-1 bg-slate-100 rounded font-mono text-blue-600" title={`User ID: ${uId}`}>{allPromoters.find(p => p.id === uId)?.name || `#${uId}`}</span>
                                             </React.Fragment>
                                         ));
-                                    } catch (e) { return <span className="text-xs italic text-white/40">Direct Entry</span>; }
+                                    } catch (e) { return <span className="text-xs italic text-slate-400">Direct Entry</span>; }
                                 })()}
-                                <ChevronRight className="w-3 h-3 text-white/20" />
-                                <span className="text-xs px-2 py-1 bg-teal-500/20 rounded font-bold text-teal-400 ring-1 ring-teal-500/50">{selectedPromoter.name} (YOU)</span>
+                                <ChevronRight className="w-3 h-3 text-slate-400" />
+                                <span className="text-xs px-2 py-1 bg-blue-50 rounded font-bold text-blue-600 ring-1 ring-blue-200">{selectedPromoter.name} (YOU)</span>
                             </div>
                         </div>
 
@@ -1221,18 +1221,18 @@ export default function AdminDashboard({ showToast }) {
                         {promoterReferredPromoters.length > 0 && (
                             <div className="mb-4">
                                 <h4 className="font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                    <Megaphone className="w-4 h-4 text-purple-400" /> Promoters Referred ({promoterReferredPromoters.length})
+                                    <Megaphone className="w-4 h-4 text-blue-600" /> Promoters Referred ({promoterReferredPromoters.length})
                                 </h4>
                                 <div className="space-y-2 max-h-40 overflow-y-auto">
                                     {promoterReferredPromoters.map(p => (
                                         <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg" style={{ background: 'var(--hover-bg)' }}>
-                                            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}><User className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></div>
+                                            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--bg-slate-100)' }}><User className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
-                                                <p className="text-xs text-teal-400">{p.referral_code || 'Pending ID'}</p>
+                                                <p className="text-xs text-blue-600">{p.referral_code || 'Pending ID'}</p>
                                             </div>
                                             <div className="text-right">
-                                                <span className={`text-xs px-2 py-1 rounded ${p.status === 'active' || p.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                                <span className={`text-xs px-2 py-1 rounded ${p.status === 'active' || p.status === 'approved' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-700'}`}>
                                                     {p.status === 'active' || p.status === 'approved' ? 'Active' : 'Pending'}
                                                 </span>
                                             </div>
@@ -1244,7 +1244,7 @@ export default function AdminDashboard({ showToast }) {
 
                         {/* Students Referred */}
                         <h4 className="font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                            <GraduationCap className="w-4 h-4 text-purple-400" /> Students Referred ({promoterReferrals.length})
+                            <GraduationCap className="w-4 h-4 text-blue-600" /> Students Referred ({promoterReferrals.length})
                         </h4>
                         {loadingDetails ? <div className="text-center py-4"><Spinner /></div> : promoterReferrals.length === 0 ? (
                             <p className="text-center py-4" style={{ color: 'var(--text-muted)' }}>No students referred yet</p>
@@ -1257,10 +1257,10 @@ export default function AdminDashboard({ showToast }) {
                                                 <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{r.student_name}</p>
                                                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{r.student_phone}</p>
                                             </div>
-                                            <span className={`text-xs px-2 py-1 rounded ${r.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>{r.status}</span>
+                                            <span className={`text-xs px-2 py-1 rounded ${r.status === 'approved' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-700'}`}>{r.status}</span>
                                         </div>
                                         <div className="flex justify-between items-center mt-2 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-                                            <span className="badge text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20">{r.course_name}</span>
+                                            <span className="badge text-xs bg-blue-50 text-blue-600 border border-blue-200">{r.course_name}</span>
                                             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(r.created_at)}</span>
                                         </div>
                                     </div>
@@ -1286,7 +1286,7 @@ export default function AdminDashboard({ showToast }) {
                             {/* Payout & Points Section */}
                             <div className="p-4 rounded-xl space-y-4" style={{ background: 'var(--hover-bg)' }}>
                                 <h4 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                    <DollarSign className="w-4 h-4 text-green-400" />
+                                    <DollarSign className="w-4 h-4 text-green-600" />
                                     Hierarchy Payouts (Flat INR)
                                 </h4>
                                 
@@ -1389,11 +1389,11 @@ export default function AdminDashboard({ showToast }) {
                                 <select 
                                     value={bonusForm.course_id} 
                                     onChange={e => setBonusForm({ ...bonusForm, course_id: e.target.value })} 
-                                    className="input-field bg-[#1a1b2e] text-white cursor-pointer"
+                                    className="input-field cursor-pointer"
                                     style={{ position: 'relative', zIndex: 100002 }}
                                 >
                                     <option value="">Select Course</option>
-                                    {courses.map(c => <option key={c.id || c.course_id} value={c.id || c.course_id} className="bg-[#1a1b2e]">{c.name || c.course_name}</option>)}
+                                    {courses.map(c => <option key={c.id || c.course_id} value={c.id || c.course_id} className="">{c.name || c.course_name}</option>)}
                                 </select>
                             </div>
                             <div><label className="block text-sm mb-1">Extra Bonus Amount (₹)</label><input type="number" value={bonusForm.bonus_amount} onChange={e => setBonusForm({ ...bonusForm, bonus_amount: e.target.value })} className="input-field" placeholder="100" /></div>
@@ -1406,15 +1406,15 @@ export default function AdminDashboard({ showToast }) {
                                 <select 
                                     value={bonusForm.eligible_roles} 
                                     onChange={e => setBonusForm({ ...bonusForm, eligible_roles: e.target.value })} 
-                                    className="input-field bg-[#1a1b2e] text-white cursor-pointer"
+                                    className="input-field cursor-pointer"
                                     style={{ position: 'relative', zIndex: 100002 }}
                                 >
-                                    <option value="ALL" className="bg-[#1a1b2e]">ALL RANKS</option>
-                                    <option value="JSO" className="bg-[#1a1b2e]">JSO ONLY</option>
-                                    <option value="SO" className="bg-[#1a1b2e]">SO ONLY</option>
-                                    <option value="SOP" className="bg-[#1a1b2e]">SOP ONLY</option>
-                                    <option value="SDO" className="bg-[#1a1b2e]">SDO ONLY</option>
-                                    <option value="Platinum" className="bg-[#1a1b2e]">Platinum ONLY</option>
+                                    <option value="ALL" className="">ALL RANKS</option>
+                                    <option value="JSO" className="">JSO ONLY</option>
+                                    <option value="SO" className="">SO ONLY</option>
+                                    <option value="SOP" className="">SOP ONLY</option>
+                                    <option value="SDO" className="">SDO ONLY</option>
+                                    <option value="Platinum" className="">Platinum ONLY</option>
                                 </select>
                             </div>
                             <div className="flex gap-2 pt-2">
@@ -1440,12 +1440,12 @@ export default function AdminDashboard({ showToast }) {
                             <div>
                                 <label className="block text-sm mb-1">Update Password</label>
                                 <input type="password" value={editUserForm.password} onChange={e => setEditUserForm({ ...editUserForm, password: e.target.value })} className="input-field" placeholder="Leave blank to keep current" />
-                                <p className="text-[10px] mt-1 text-amber-400/60 italic">Setting a new password will immediately change their login credentials.</p>
+                                <p className="text-[10px] mt-1 text-amber-700/60 italic">Setting a new password will immediately change their login credentials.</p>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-sm mb-1">Rank</label>
-                                    <select value={editUserForm.rank} onChange={e => setEditUserForm({ ...editUserForm, rank: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
+                                    <select value={editUserForm.rank} onChange={e => setEditUserForm({ ...editUserForm, rank: e.target.value })} className="input-field">
                                         <option value="JSO">JSO</option>
                                         <option value="SO">SO</option>
                                         <option value="SOP">SOP</option>
@@ -1455,7 +1455,7 @@ export default function AdminDashboard({ showToast }) {
                                 </div>
                                 <div>
                                     <label className="block text-sm mb-1">Status</label>
-                                    <select value={editUserForm.status} onChange={e => setEditUserForm({ ...editUserForm, status: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
+                                    <select value={editUserForm.status} onChange={e => setEditUserForm({ ...editUserForm, status: e.target.value })} className="input-field">
                                         <option value="active">Active</option>
                                         <option value="suspended">Suspended</option>
                                     </select>
@@ -1482,7 +1482,7 @@ export default function AdminDashboard({ showToast }) {
                             <div><label className="block text-sm mb-1">WhatsApp Number</label><input type="text" value={editAdmissionForm.student_phone} onChange={e => setEditAdmissionForm({ ...editAdmissionForm, student_phone: e.target.value })} className="input-field" /></div>
                             <div>
                                 <label className="block text-sm mb-1">Course</label>
-                                <select value={editAdmissionForm.course_id} onChange={e => setEditAdmissionForm({ ...editAdmissionForm, course_id: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
+                                <select value={editAdmissionForm.course_id} onChange={e => setEditAdmissionForm({ ...editAdmissionForm, course_id: e.target.value })} className="input-field">
                                     {courses.map(c => <option key={c.id || c.course_id} value={c.id || c.course_id}>{c.name || c.course_name} (₹{c.price})</option>)}
                                 </select>
                             </div>
@@ -1506,7 +1506,7 @@ export default function AdminDashboard({ showToast }) {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm mb-1">Course</label>
-                                <select value={offerForm.course_id} onChange={e => setOfferForm({ ...offerForm, course_id: e.target.value })} className="input-field bg-[#1a1b2e] text-white">
+                                <select value={offerForm.course_id} onChange={e => setOfferForm({ ...offerForm, course_id: e.target.value })} className="input-field">
                                     <option value="">Select Course</option>
                                     {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>

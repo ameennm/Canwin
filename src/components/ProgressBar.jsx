@@ -22,7 +22,7 @@ export default function ProgressBar({ totalPoints, currentLevel }) {
                 </div>
             )}
             {!nextLevel && (
-                <p className="text-xs text-center mt-2 text-teal-400">
+                <p className="text-xs text-center mt-2 text-blue-600">
                     🎉 Maximum level reached!
                 </p>
             )}

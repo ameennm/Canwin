@@ -3,11 +3,8 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
-    const [isDark, setIsDark] = useState(() => {
-        // Check localStorage first, default to dark
-        const saved = localStorage.getItem('canwin_theme');
-        return saved ? saved === 'dark' : true;
-    });
+    // Single light theme for clarity.
+    const [isDark, setIsDark] = useState(false);
 
     useEffect(() => {
         // Apply theme to document

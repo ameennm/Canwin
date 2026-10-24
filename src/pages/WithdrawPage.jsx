@@ -6,10 +6,10 @@ import ThemeToggle from '../components/ThemeToggle';
 import Spinner from '../components/Spinner';
 
 const STATUS_STYLES = {
-    pending: 'bg-amber-500/10 text-amber-500',
-    approved: 'bg-blue-500/10 text-blue-500',
-    paid: 'bg-green-500/10 text-green-500',
-    rejected: 'bg-red-500/10 text-red-400',
+    pending: 'bg-amber-50 text-amber-700',
+    approved: 'bg-blue-50 text-blue-600',
+    paid: 'bg-green-50 text-green-600',
+    rejected: 'bg-red-50 text-red-600',
 };
 
 export default function WithdrawPage({ showToast }) {
@@ -92,7 +92,7 @@ export default function WithdrawPage({ showToast }) {
 
     const field = (key, label, placeholder, extra = {}) => (
         <div>
-            <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>{label} <span className="text-red-400">*</span></label>
+            <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>{label} <span className="text-red-600">*</span></label>
             <input
                 value={payment[key]}
                 onChange={(e) => setPayment({ ...payment, [key]: e.target.value })}
@@ -115,7 +115,7 @@ export default function WithdrawPage({ showToast }) {
                 <div className="flex items-center gap-3 mb-6">
                     <button
                         onClick={() => navigate('/dashboard')}
-                        className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 transition-colors"
+                        className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-colors"
                         style={{ background: 'var(--hover-bg)' }}
                     >
                         <ArrowLeft className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
@@ -127,22 +127,22 @@ export default function WithdrawPage({ showToast }) {
                 </div>
 
                 {/* Balance Card */}
-                <div className="card bg-gradient-to-br from-blue-500/10 to-indigo-500/5 border-blue-500/20 mb-6 flex items-center justify-between">
+                <div className="card border-blue-200 mb-6 flex items-center justify-between">
                     <div>
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1">Withdrawable Balance</p>
-                        <h2 className="text-3xl font-black text-blue-500">₹{balance.toLocaleString()}</h2>
+                        <p className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Withdrawable Balance</p>
+                        <h2 className="text-3xl font-black text-blue-600">₹{balance.toLocaleString()}</h2>
                         {pending > 0 && (
                             <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>₹{pending.toLocaleString()} waiting for payout</p>
                         )}
                     </div>
-                    <Wallet className="w-10 h-10 text-blue-500/50" />
+                    <Wallet className="w-10 h-10 text-blue-600/50" />
                 </div>
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="card">
                         <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-                            Withdrawal Amount (₹) <span className="text-red-400">*</span>
+                            Withdrawal Amount (₹) <span className="text-red-600">*</span>
                         </label>
                         <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold" style={{ color: 'var(--text-secondary)' }}>₹</span>

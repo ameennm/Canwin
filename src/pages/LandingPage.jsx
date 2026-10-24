@@ -57,11 +57,13 @@ export default function LandingPage({ showToast }) {
         }
     };
 
-    const levels = [
-        { name: 'Bronze', icon: Award, points: '0-99', color: 'text-amber-600' },
-        { name: 'Silver', icon: Shield, points: '100+', color: 'text-slate-400' },
-        { name: 'Gold', icon: Crown, points: '250+', color: 'text-yellow-400' },
-        { name: 'Diamond', icon: Gem, points: '500+', color: 'text-blue-400' },
+    // Ranks and the points needed for each (see lib/server/users.js).
+    const ranks = [
+        { name: 'JSO', points: 'Start' },
+        { name: 'SO', points: '20 pts' },
+        { name: 'SOP', points: '75 pts' },
+        { name: 'SDO', points: '200 pts' },
+        { name: 'Platinum', points: '500 pts' },
     ];
 
     return (
@@ -74,7 +76,7 @@ export default function LandingPage({ showToast }) {
             <div className="w-full max-w-md">
                 {/* Logo */}
                 <div className="flex items-center justify-center gap-3 mb-8">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-purple-500 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600">
                         <span className="text-white font-bold text-2xl">C</span>
                     </div>
                     <div>
@@ -84,28 +86,13 @@ export default function LandingPage({ showToast }) {
                 </div>
 
                 {/* Hero */}
-                <div className="text-center mb-10 fade-in">
-                    <h2 className="text-4xl font-black mb-3 tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                        Refer & <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-purple-500">Earn Rewards</span>
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                        Add students. <span className="text-blue-600">Earn commission.</span>
                     </h2>
-                    <p className="text-lg opacity-80" style={{ color: 'var(--text-secondary)' }}>
-                        Join our premium network and turn your referrals into earnings.
+                    <p className="text-base" style={{ color: 'var(--text-secondary)' }}>
+                        Log in with your mobile number, or sign up with a referral code.
                     </p>
-
-                    <div className="flex justify-center gap-6 mt-6">
-                        <div className="flex flex-col items-center gap-1 group">
-                            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <Zap className="w-6 h-6 text-amber-500" />
-                            </div>
-                            <span className="text-xs font-bold text-amber-500/80 uppercase tracking-wider">Paid: +10</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-1 group">
-                            <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <Zap className="w-6 h-6 text-green-500" />
-                            </div>
-                            <span className="text-xs font-bold text-green-500/80 uppercase tracking-wider">Free: +2</span>
-                        </div>
-                    </div>
                 </div>
 
                 {/* Login/Signup Toggle */}
@@ -114,7 +101,7 @@ export default function LandingPage({ showToast }) {
                         type="button"
                         onClick={() => setMode('login')}
                         className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${mode === 'login'
-                            ? 'bg-gradient-to-r from-teal-500 to-purple-500 text-white'
+                            ? ' bg-blue-600 text-white'
                             : ''
                             }`}
                         style={mode !== 'login' ? { color: 'var(--text-secondary)' } : {}}
@@ -126,7 +113,7 @@ export default function LandingPage({ showToast }) {
                         type="button"
                         onClick={() => setMode('signup')}
                         className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${mode === 'signup'
-                            ? 'bg-gradient-to-r from-teal-500 to-purple-500 text-white'
+                            ? ' bg-blue-600 text-white'
                             : ''
                             }`}
                         style={mode !== 'signup' ? { color: 'var(--text-secondary)' } : {}}
@@ -222,17 +209,17 @@ export default function LandingPage({ showToast }) {
                 </form>
 
                 {/* Levels - Compact */}
-                <div className="card fade-in">
-                    <h4 className="font-semibold mb-3 text-sm text-center" style={{ color: 'var(--text-primary)' }}>Level Up With Points</h4>
-                    <div className="grid grid-cols-4 gap-1 text-center">
-                        {levels.map((level) => (
-                            <div key={level.name} className="p-2">
-                                <level.icon className={`w-5 h-5 mx-auto mb-1 ${level.color}`} />
-                                <p className="text-xs truncate" style={{ color: 'var(--text-primary)' }}>{level.name}</p>
-                                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{level.points}</p>
+                <div className="card mt-4">
+                    <h4 className="font-semibold mb-3 text-sm text-center" style={{ color: 'var(--text-primary)' }}>Ranks</h4>
+                    <div className="grid grid-cols-5 gap-1 text-center">
+                        {ranks.map((rank) => (
+                            <div key={rank.name} className="py-1">
+                                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{rank.name}</p>
+                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{rank.points}</p>
                             </div>
                         ))}
                     </div>
+                    <p className="text-xs text-center mt-2" style={{ color: 'var(--text-muted)' }}>Every approved admission gives you points. Your rank goes up automatically.</p>
                 </div>
             </div>
         </div>

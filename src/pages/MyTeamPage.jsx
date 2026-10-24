@@ -52,7 +52,7 @@ export default function MyTeamPage({ showToast }) {
                 <div className="flex items-center gap-3 mb-6">
                     <button
                         onClick={() => navigate('/dashboard')}
-                        className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 transition-colors"
+                        className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-colors"
                         style={{ background: 'var(--hover-bg)' }}
                     >
                         <ArrowLeft className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
@@ -66,19 +66,19 @@ export default function MyTeamPage({ showToast }) {
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="card text-center p-4">
-                        <Users className="w-6 h-6 mx-auto mb-2 text-teal-400" />
+                        <Users className="w-6 h-6 mx-auto mb-2 text-blue-600" />
                         <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{teamData.stats?.team_size || 0}</p>
                         <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Total Team Size</p>
                     </div>
                     <div className="card text-center p-4">
-                        <Link2 className="w-6 h-6 mx-auto mb-2 text-indigo-400" />
+                        <Link2 className="w-6 h-6 mx-auto mb-2 text-blue-600" />
                         <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{teamData.stats?.direct_referrals || 0}</p>
-                        <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Direct Referrals</p>
+                        <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>People I invited</p>
                     </div>
                 </div>
 
                 {/* Direct Referrals */}
-                <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Direct Referrals</h2>
+                <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-primary)' }}>People I invited</h2>
                 {(!teamData.directReferrals || teamData.directReferrals.length === 0) ? (
                     <div className="card text-center py-10">
                         <User className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
@@ -90,20 +90,20 @@ export default function MyTeamPage({ showToast }) {
                         {teamData.directReferrals.map(member => (
                             <div key={member.id} className="card">
                                 <div className="flex items-start gap-3">
-                                    <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
+                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
                                         {member.avatar_url ? (
                                             <img src={member.avatar_url} className="w-full h-full rounded-full object-cover" />
                                         ) : (
-                                            <User className="w-6 h-6 text-muted-foreground" />
+                                            <User className="w-6 h-6 text-slate-500" />
                                         )}
                                     </div>
                                     <div className="flex-1">
                                         <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>{member.name}</h3>
-                                        <p className="text-xs font-mono text-teal-400 mb-1">{member.rank}</p>
+                                        <p className="text-xs font-mono text-blue-600 mb-1">{member.rank}</p>
                                         <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Team Size: {member.team_size || 0}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-sm font-bold text-amber-500">{member.total_points || 0} pts</p>
+                                        <p className="text-sm font-bold text-amber-700">{member.total_points || 0} pts</p>
                                     </div>
                                 </div>
                             </div>

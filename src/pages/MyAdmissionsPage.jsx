@@ -65,7 +65,7 @@ export default function MyAdmissionsPage({ showToast }) {
                 <div className="flex items-center gap-3 mb-6">
                     <button
                         onClick={() => navigate('/dashboard')}
-                        className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-white/5 transition-colors"
+                        className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-colors"
                         style={{ background: 'var(--hover-bg)' }}
                     >
                         <ArrowLeft className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
@@ -100,28 +100,28 @@ export default function MyAdmissionsPage({ showToast }) {
                 ) : (
                     <div className="cards-grid">
                         {filterAdmissions(admissions).map(a => (
-                            <div key={a.id} className="card hover:border-teal-500/30 transition-all">
+                            <div key={a.id} className="card hover:border-slate-300 transition-all">
                                 <div className="flex justify-between items-start mb-3">
                                     <div>
                                         <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{a.student_name}</h3>
                                         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{a.student_phone}</p>
                                     </div>
                                     <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
-                                        a.status === 'approved' ? 'bg-green-500/20 text-green-400' :
-                                        a.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
-                                        'bg-amber-500/20 text-amber-400'
+                                        a.status === 'approved' ? 'bg-green-50 text-green-600' :
+                                        a.status === 'rejected' ? 'bg-red-50 text-red-600' :
+                                        'bg-amber-50 text-amber-700'
                                     }`}>
                                         {a.status.toUpperCase()}
                                     </span>
                                 </div>
-                                <div className="space-y-2 pt-2 border-t border-white/5">
+                                <div className="space-y-2 pt-2 border-t border-slate-200">
                                     <div className="flex justify-between items-center">
                                         <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Course</span>
                                         <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{a.course_name}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Reward</span>
-                                        <span className="text-sm font-bold text-teal-400">
+                                        <span className="text-sm font-bold text-blue-600">
                                             {a.status === 'approved'
                                                 ? `₹${Number(a.commission_earned || 0).toLocaleString()} + ${a.points_earned || 0} Points`
                                                 : a.status === 'pending' ? 'After approval' : '—'}

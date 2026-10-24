@@ -159,7 +159,7 @@ export default function IDCard({ user }) {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    boxShadow: '0 4px 12px rgba(20, 184, 166, 0.3)',
+                                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.12)',
                                 }}
                             >
                                 <span style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>C</span>
@@ -228,11 +228,11 @@ export default function IDCard({ user }) {
                                 <div style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Points</div>
                             </div>
                             <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '16px', fontWeight: '700', color: '#f59e0b' }}>{user.paid_referrals || 0}</div>
+                                <div style={{ fontSize: '16px', fontWeight: '700', color: '#b45309' }}>{user.paid_referrals || 0}</div>
                                 <div style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Paid</div>
                             </div>
                             <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '16px', fontWeight: '700', color: '#22c55e' }}>{user.free_referrals || 0}</div>
+                                <div style={{ fontSize: '16px', fontWeight: '700', color: '#15803d' }}>{user.free_referrals || 0}</div>
                                 <div style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Free</div>
                             </div>
                         </div>

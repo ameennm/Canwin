@@ -29,8 +29,8 @@ export default function PendingPage() {
             <div className="max-w-md w-full">
                 <div className="card fade-in text-center">
                     {/* Icon */}
-                    <div className="w-20 h-20 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-6">
-                        <Clock className="w-10 h-10 text-amber-400" />
+                    <div className="w-20 h-20 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-6">
+                        <Clock className="w-10 h-10 text-amber-700" />
                     </div>
 
                     {/* Content */}
@@ -54,7 +54,7 @@ export default function PendingPage() {
                             </div>
                             <div className="flex justify-between">
                                 <span style={{ color: 'var(--text-muted)' }}>Status</span>
-                                <span className="text-amber-400 flex items-center gap-1">
+                                <span className="text-amber-700 flex items-center gap-1">
                                     <Clock className="w-4 h-4" /> Pending
                                 </span>
                             </div>
@@ -80,9 +80,9 @@ export default function PendingPage() {
                     </div>
 
                     {/* Info */}
-                    <div className="mt-6 p-4 rounded-xl" style={{ background: 'rgba(13, 148, 136, 0.1)' }}>
+                    <div className="mt-6 p-4 rounded-xl" style={{ background: 'rgba(37, 99, 235, 0.1)' }}>
                         <div className="flex items-start gap-3">
-                            <CheckCircle className="w-5 h-5 text-teal-400 flex-shrink-0 mt-0.5" />
+                            <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                             <p className="text-sm text-left" style={{ color: 'var(--text-secondary)' }}>
                                 You will be able to login and start referring students once your account is approved.
                             </p>

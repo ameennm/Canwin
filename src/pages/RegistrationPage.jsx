@@ -95,7 +95,7 @@ export default function RegistrationPage({ showToast }) {
                     {/* Full Name */}
                     <div>
                         <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-                            Full Name <span className="text-red-400">*</span>
+                            Full Name <span className="text-red-600">*</span>
                         </label>
                         <input
                             type="text"
@@ -110,7 +110,7 @@ export default function RegistrationPage({ showToast }) {
                     {/* Email */}
                     <div>
                         <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-                            Email <span className="text-red-400">*</span>
+                            Email <span className="text-red-600">*</span>
                         </label>
                         <input
                             type="email"
@@ -123,11 +123,11 @@ export default function RegistrationPage({ showToast }) {
                     </div>
 
                     {/* Referrer Code */}
-                    <div className="card" style={{ background: 'rgba(20, 184, 166, 0.05)', border: '1px solid rgba(20, 184, 166, 0.2)' }}>
+                    <div className="card" style={{ background: 'rgba(37, 99, 235, 0.05)', border: '1px solid rgba(37, 99, 235, 0.12)' }}>
                         <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
                             <span className="flex items-center gap-1">
-                                <Users className="w-4 h-4 text-teal-400" />
-                                Referrer Code <span className="text-red-400">*</span>
+                                <Users className="w-4 h-4 text-blue-600" />
+                                Referrer Code <span className="text-red-600">*</span>
                             </span>
                         </label>
                         <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>

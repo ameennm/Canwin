@@ -117,16 +117,16 @@ export default function AddStudentPage({ showToast }) {
                     <div className="flex items-center gap-3">
                         <div
                             className="w-12 h-12 rounded-full flex items-center justify-center"
-                            style={{ border: '2px solid rgba(20, 184, 166, 0.5)', background: 'var(--bg-secondary)' }}
+                            style={{ border: '2px solid rgba(37, 99, 235, 0.12)', background: 'var(--bg-slate-100)' }}
                         >
                             <User className="w-6 h-6" style={{ color: 'var(--text-muted)' }} />
                         </div>
                         <div className="flex-1">
                             <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{user.name}</p>
-                            <p className="text-xs text-teal-400 font-mono">{user.referral_code}</p>
+                            <p className="text-xs text-blue-600 font-mono">{user.referral_code}</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-lg font-bold text-amber-400">{user.total_points || 0}</p>
+                            <p className="text-lg font-bold text-amber-700">{user.total_points || 0}</p>
                             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Points</p>
                         </div>
                     </div>
@@ -137,7 +137,7 @@ export default function AddStudentPage({ showToast }) {
                     {/* Student Name */}
                     <div className="card">
                         <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-                            Student Name <span className="text-red-400">*</span>
+                            Student Name <span className="text-red-600">*</span>
                         </label>
                         <div className="relative">
                             <User className="input-icon" />
@@ -155,7 +155,7 @@ export default function AddStudentPage({ showToast }) {
                     {/* Student Contact */}
                     <div className="card">
                         <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-                            Student Mobile <span className="text-red-400">*</span>
+                            Student Mobile <span className="text-red-600">*</span>
                         </label>
                         <div className="relative">
                             <Phone className="input-icon" />
@@ -174,7 +174,7 @@ export default function AddStudentPage({ showToast }) {
                     {/* Course Selection */}
                     <div className="card">
                         <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-                            Select Course <span className="text-red-400">*</span>
+                            Select Course <span className="text-red-600">*</span>
                         </label>
 
                         {loadingCourses ? (
@@ -188,7 +188,7 @@ export default function AddStudentPage({ showToast }) {
                                 <button
                                     type="button"
                                     onClick={fetchCourses}
-                                    className="text-teal-400 text-sm mt-2 underline"
+                                    className="text-blue-600 text-sm mt-2 underline"
                                 >
                                     Refresh
                                 </button>
@@ -219,18 +219,18 @@ export default function AddStudentPage({ showToast }) {
                             className="card flex items-center justify-between"
                             style={{
                                 background: selectedCourse.price > 0
-                                    ? 'rgba(245, 158, 11, 0.15)'
-                                    : 'rgba(34, 197, 94, 0.15)',
-                                border: `1px solid ${selectedCourse.price > 0 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(34, 197, 94, 0.3)'}`
+                                    ? 'rgba(217, 119, 6, 0.12)'
+                                    : 'rgba(22, 163, 74, 0.12)',
+                                border: `1px solid ${selectedCourse.price > 0 ? 'rgba(217, 119, 6, 0.12)' : 'rgba(22, 163, 74, 0.12)'}`
                             }}
                         >
                             <div className="flex items-center gap-2">
-                                <Zap className={`w-5 h-5 ${selectedCourse.price > 0 ? 'text-amber-400' : 'text-green-400'}`} />
+                                <Zap className={`w-5 h-5 ${selectedCourse.price > 0 ? 'text-amber-700' : 'text-green-600'}`} />
                                 <span style={{ color: 'var(--text-secondary)' }}>Points you'll earn:</span>
                             </div>
                             <span
                                 className="text-xl font-bold"
-                                style={{ color: selectedCourse.price > 0 ? '#f59e0b' : '#22c55e' }}
+                                style={{ color: selectedCourse.price > 0 ? '#b45309' : '#15803d' }}
                             >
                                 +{selectedCourse.points}
                             </span>

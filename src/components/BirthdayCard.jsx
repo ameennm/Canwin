@@ -14,8 +14,8 @@ export default function BirthdayCard({ userName, avatarUrl }) {
                             </div>
                         )}
                     </div>
-                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center animate-bounce">
-                        <PartyPopper className="w-5 h-5 text-yellow-800" />
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-amber-600 rounded-full flex items-center justify-center animate-bounce">
+                        <PartyPopper className="w-5 h-5 text-amber-700" />
                     </div>
                 </div>
             </div>

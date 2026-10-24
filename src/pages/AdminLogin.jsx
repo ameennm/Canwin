@@ -57,7 +57,7 @@ export default function AdminLogin({ showToast }) {
                 <div className="card fade-in">
                     {/* Header */}
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-purple-500 flex items-center justify-center mx-auto mb-4">
+                        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-blue-600">
                             <Shield className="w-8 h-8 text-white" />
                         </div>
                         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Admin Login</h1>

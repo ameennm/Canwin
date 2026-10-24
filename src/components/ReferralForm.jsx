@@ -80,7 +80,7 @@ export default function ReferralForm({ userId, onSuccess }) {
     return (
         <div className="card">
             <h3 className="font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                <UserPlus className="w-5 h-5 text-teal-400" />
+                <UserPlus className="w-5 h-5 text-blue-600" />
                 Add New Referral
             </h3>
 
@@ -175,12 +175,12 @@ export default function ReferralForm({ userId, onSuccess }) {
                 {selectedCourse && (
                     <div
                         className="flex items-center justify-between p-3 rounded-lg"
-                        style={{ background: selectedCourse.course_type === 'paid' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(34, 197, 94, 0.1)' }}
+                        style={{ background: selectedCourse.course_type === 'paid' ? 'rgba(217, 119, 6, 0.1)' : 'rgba(22, 163, 74, 0.1)' }}
                     >
                         <span style={{ color: 'var(--text-secondary)' }}>Points you'll earn:</span>
                         <span
                             className="font-bold"
-                            style={{ color: selectedCourse.course_type === 'paid' ? '#f59e0b' : '#22c55e' }}
+                            style={{ color: selectedCourse.course_type === 'paid' ? '#b45309' : '#15803d' }}
                         >
                             +{selectedCourse.points} pts
                         </span>

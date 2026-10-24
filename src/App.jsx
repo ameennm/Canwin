@@ -24,9 +24,6 @@ function App() {
   return (
     <ThemeProvider>
       <div className="min-h-screen relative">
-        {/* Background decorations */}
-        <div className="bg-decoration bg-blob-1" />
-        <div className="bg-decoration bg-blob-2" />
 
         {/* Toast notifications */}
         {toast && <Toast message={toast.message} type={toast.type} />}
